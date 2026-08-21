@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Plus, DollarSign, X, ShieldAlert, Sparkles, UserPlus, ShoppingBag, Search, Ban, CheckCircle, Trash2, ShieldCheck, UserCheck, Settings, Lock, Unlock, Infinity as InfinityIcon, Layers, Users } from 'lucide-react';
+import { Plus, DollarSign, X, ShieldAlert, Sparkles, UserPlus, ShoppingBag, Search, Ban, CheckCircle, Trash2, ShieldCheck, UserCheck, Settings, Lock, Unlock, Infinity as InfinityIcon, Layers, Users, BarChart3, TrendingUp, Key, Calendar, Trophy } from 'lucide-react';
 import CopyButton from '@/components/CopyButton';
 import Modal from '@/components/Modal';
 
@@ -51,6 +51,7 @@ export default function AdminResellers() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isSalesOpen, setIsSalesOpen] = useState(false);
+  const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isEditSettingsOpen, setIsEditSettingsOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserAccountType | null>(null);
   const [salesSearch, setSalesSearch] = useState('');
@@ -143,6 +144,12 @@ export default function AdminResellers() {
     setSelectedUser(user);
     setSalesSearch('');
     setIsSalesOpen(true);
+  };
+
+  const openAnalyticsModal = (user: UserAccountType) => {
+    setSelectedUser(user);
+    setSalesSearch('');
+    setIsAnalyticsOpen(true);
   };
 
   const toggleCreateProductSelection = (productId: string) => {
@@ -357,12 +364,30 @@ export default function AdminResellers() {
     return item.productName.toLowerCase().includes(q) || item.key.toLowerCase().includes(q) || item.duration.toLowerCase().includes(q);
   }) || [];
 
+  // Compute analytics for selected user
+  const userPurchases = selectedUser?.purchases || [];
+  const productStats: Record<string, { count: number; spent: number }> = {};
+  const durationStats: Record<string, number> = {};
+
+  for (const item of userPurchases) {
+    if (!productStats[item.productName]) {
+      productStats[item.productName] = { count: 0, spent: 0 };
+    }
+    productStats[item.productName].count += 1;
+    productStats[item.productName].spent += (item.price || 0);
+
+    durationStats[item.duration] = (durationStats[item.duration] || 0) + 1;
+  }
+
+  const sortedProductStats = Object.entries(productStats).sort((a, b) => b[1].count - a[1].count);
+  const topProduct = sortedProductStats[0] ? sortedProductStats[0][0] : 'None';
+
   return (
     <div className="animate-fade-in">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1>User & Account Management</h1>
-          <p className="subtitle">Separate sales tracking for Per-Budget (₱) vs Unlimited (∞) Resellers.</p>
+          <p className="subtitle">Individual reseller analytics, Per-Budget vs Unlimited tracking, and product locking.</p>
         </div>
         <button className="btn btn-primary" onClick={openCreateModal}>
           <UserPlus size={16} />
@@ -616,6 +641,15 @@ export default function AdminResellers() {
                         <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
                           {user.role === 'reseller' && (
                             <>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                                onClick={() => openAnalyticsModal(user)}
+                                title="View Per-User Analytics"
+                              >
+                                <BarChart3 size={13} style={{ color: 'var(--accent-orange)' }} />
+                                Analytics
+                              </button>
                               <button 
                                 className="btn btn-secondary" 
                                 style={{ padding: '6px 10px', fontSize: '0.8rem' }} 
@@ -677,6 +711,211 @@ export default function AdminResellers() {
           </div>
         </div>
       )}
+
+      {/* Per-User Analytics Modal */}
+      <Modal isOpen={isAnalyticsOpen && !!selectedUser} onClose={() => setIsAnalyticsOpen(false)} maxWidth="800px">
+        {selectedUser && (
+          <>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '42px', height: '42px', borderRadius: 'var(--radius-sm)',
+                  background: 'linear-gradient(135deg, rgba(255, 94, 0, 0.2), rgba(99, 102, 241, 0.2))',
+                  border: '1px solid rgba(255, 94, 0, 0.3)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-orange)'
+                }}>
+                  <BarChart3 size={22} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.25rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span>{selectedUser.username}</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                      (User Analytics Dashboard)
+                    </span>
+                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px' }}>
+                    {selectedUser.resellerType === 'unlimited' ? (
+                      <span className="badge badge-orange" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                        <InfinityIcon size={10} style={{ marginRight: '3px' }} /> Unlimited Generation Tier
+                      </span>
+                    ) : (
+                      <span className="badge badge-indigo" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                        <DollarSign size={10} style={{ marginRight: '2px' }} /> Per Budget Tier
+                      </span>
+                    )}
+
+                    {selectedUser.isBanned ? (
+                      <span className="badge badge-crimson" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                        <Ban size={10} style={{ marginRight: '2px' }} /> Banned Account
+                      </span>
+                    ) : (
+                      <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                        <CheckCircle size={10} style={{ marginRight: '2px' }} /> Active Account
+                      </span>
+                    )}
+
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <Calendar size={11} /> Joined {new Date(selectedUser.createdAt).toLocaleDateString()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setIsAnalyticsOpen(false)} className="modal-close">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Key Metrics Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '12px', marginBottom: '20px' }}>
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Total Keys Claimed</span>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-indigo)', marginTop: '2px' }}>
+                  {selectedUser.totalPurchases || 0} Keys
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Total Funds Spent</span>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-orange)', marginTop: '2px' }}>
+                  {selectedUser.resellerType === 'unlimited' ? '₱0.00 (Unli)' : `₱${(selectedUser.totalSpent || 0).toFixed(2)}`}
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Current Balance</span>
+                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '2px' }}>
+                  {selectedUser.resellerType === 'unlimited' ? '∞ Unlimited' : `₱${selectedUser.balance.toFixed(2)}`}
+                </div>
+              </div>
+
+              <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Top Preferred Game</span>
+                <div style={{ fontSize: '0.95rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {topProduct}
+                </div>
+              </div>
+            </div>
+
+            {/* Product Sales & Duration Breakdown Section */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
+              {/* Product Breakdown */}
+              <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                  <Trophy size={14} color="var(--accent-orange)" />
+                  Product Sales Breakdown
+                </span>
+                {sortedProductStats.length === 0 ? (
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>No purchases recorded yet.</span>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                    {sortedProductStats.map(([prodName, stat]) => {
+                      const percentage = selectedUser.totalPurchases ? Math.round((stat.count / selectedUser.totalPurchases) * 100) : 0;
+                      return (
+                        <div key={prodName}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.78rem', marginBottom: '4px' }}>
+                            <span style={{ fontWeight: 600 }}>{prodName}</span>
+                            <span style={{ color: 'var(--text-secondary)' }}>{stat.count} keys ({percentage}%)</span>
+                          </div>
+                          <div style={{ width: '100%', height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.05)', overflow: 'hidden' }}>
+                            <div style={{ width: `${percentage}%`, height: '100%', borderRadius: '3px', background: 'linear-gradient(90deg, var(--accent-indigo), var(--accent-orange))' }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* License Duration Distribution */}
+              <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
+                <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
+                  <TrendingUp size={14} color="var(--accent-emerald)" />
+                  Duration Preferences
+                </span>
+                {Object.keys(durationStats).length === 0 ? (
+                  <span style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>No purchases recorded yet.</span>
+                ) : (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                    {Object.entries(durationStats).map(([dur, count]) => (
+                      <div key={dur} style={{
+                        flex: 1, minWidth: '100px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)',
+                        borderRadius: 'var(--radius-sm)', padding: '8px 10px', textAlign: 'center'
+                      }}>
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', display: 'block' }}>{dur}</span>
+                        <span style={{ fontSize: '1.1rem', fontWeight: 800, color: 'var(--accent-indigo)' }}>{count} Keys</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Searchable Transaction & Key Log */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <span style={{ fontSize: '0.85rem', fontWeight: 700 }}>Itemized Purchase & Key History</span>
+              <div className="input-wrapper" style={{ width: '220px' }}>
+                <Search className="input-icon" size={13} />
+                <input 
+                  type="text" 
+                  className="form-input" 
+                  placeholder="Filter keys..."
+                  value={salesSearch}
+                  onChange={(e) => setSalesSearch(e.target.value)}
+                  style={{ fontSize: '0.78rem', padding: '6px 8px 6px 28px' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden', maxHeight: '250px', overflowY: 'auto' }}>
+              {!selectedUser.purchases || selectedUser.purchases.length === 0 ? (
+                <div style={{ padding: '30px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.82rem' }}>
+                  No transaction history recorded for this user.
+                </div>
+              ) : (
+                <table className="table-saas" style={{ fontSize: '0.8rem' }}>
+                  <thead>
+                    <tr>
+                      <th>Product</th>
+                      <th>License Key Code</th>
+                      <th>Duration</th>
+                      <th>Price Paid</th>
+                      <th>Purchased At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPurchases.map((item) => (
+                      <tr key={item._id}>
+                        <td style={{ fontWeight: 600 }}>{item.productName}</td>
+                        <td>
+                          <div className="key-display">
+                            <code className="key-tag" style={{ fontSize: '0.74rem' }}>{item.key}</code>
+                            <CopyButton text={item.key} size={11} />
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge badge-indigo" style={{ fontSize: '0.68rem' }}>{item.duration}</span>
+                        </td>
+                        <td style={{ fontWeight: 700, color: 'var(--accent-emerald)' }}>
+                          {selectedUser.resellerType === 'unlimited' ? '₱0.00 (Unli)' : `₱${item.price.toFixed(2)}`}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.75rem' }}>
+                          {new Date(item.soldAt).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '12px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsAnalyticsOpen(false)}>
+                Close Analytics
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
 
       {/* Edit Tier Mode & Allowed Products Modal */}
       <Modal isOpen={isEditSettingsOpen && !!selectedUser} onClose={() => setIsEditSettingsOpen(false)} maxWidth="550px">
