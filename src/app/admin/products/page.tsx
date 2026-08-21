@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, X, PlusCircle, MinusCircle, AlertCircle } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, PlusCircle, MinusCircle, AlertCircle, KeyRound, Key, Search, ShoppingBag } from 'lucide-react';
 import Modal from '@/components/Modal';
+import CopyButton from '@/components/CopyButton';
 
 interface PriceOption {
   duration: string;
@@ -18,11 +19,35 @@ interface ProductType {
   isActive: boolean;
 }
 
+interface KeyType {
+  _id: string;
+  key: string;
+  productId: {
+    _id: string;
+    name: string;
+  };
+  duration: string;
+  isSold: boolean;
+  resellerId?: {
+    username: string;
+  };
+  price?: number;
+  createdAt: string;
+}
+
 export default function AdminProducts() {
   const [products, setProducts] = useState<ProductType[]>([]);
+  const [keys, setKeys] = useState<KeyType[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit'>('create');
+
+  // View Stock Modal State
+  const [isStockViewOpen, setIsStockViewOpen] = useState(false);
+  const [selectedProductForStock, setSelectedProductForStock] = useState<ProductType | null>(null);
+  const [stockSearchQuery, setStockSearchQuery] = useState('');
   
   // Form State
   const [currentId, setCurrentId] = useState<string>('');
@@ -34,26 +59,33 @@ export default function AdminProducts() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
 
-  // Load Products
-  const loadProducts = async () => {
+  // Load Products and Keys
+  const loadData = async () => {
     try {
       setLoading(true);
-      const res = await fetch('/api/admin/products');
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success) {
-          setProducts(data.products);
-        }
+      const [prodRes, keysRes] = await Promise.all([
+        fetch('/api/admin/products'),
+        fetch('/api/admin/keys'),
+      ]);
+
+      if (prodRes.ok) {
+        const prodData = await prodRes.json();
+        if (prodData.success) setProducts(prodData.products);
+      }
+
+      if (keysRes.ok) {
+        const keysData = await keysRes.json();
+        if (keysData.success) setKeys(keysData.keys);
       }
     } catch (err) {
-      console.error('Failed to load products:', err);
+      console.error('Failed to load data:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProducts();
+    loadData();
   }, []);
 
   const openCreateModal = () => {
@@ -68,66 +100,59 @@ export default function AdminProducts() {
     setIsModalOpen(true);
   };
 
-  const openEditModal = (product: ProductType) => {
+  const openEditModal = (prod: ProductType) => {
     setModalMode('edit');
-    setCurrentId(product._id || '');
-    setName(product.name);
-    setDescription(product.description);
-    setImage(product.image || '');
-    setPrices(product.prices.map(p => ({ ...p }))); // clone prices
-    setIsActive(product.isActive);
+    setCurrentId(prod._id || '');
+    setName(prod.name);
+    setDescription(prod.description);
+    setPrices(prod.prices.length > 0 ? prod.prices : [{ duration: '30 Days', price: 10 }]);
+    setImage(prod.image || '');
+    setIsActive(prod.isActive);
     setFormError(null);
     setIsModalOpen(true);
   };
 
+  const openStockViewModal = (prod: ProductType) => {
+    setSelectedProductForStock(prod);
+    setStockSearchQuery('');
+    setIsStockViewOpen(true);
+  };
+
   const handleAddPriceOption = () => {
-    setPrices([...prices, { duration: '', price: 0 }]);
+    setPrices([...prices, { duration: '1 Day', price: 1 }]);
   };
 
   const handleRemovePriceOption = (index: number) => {
-    if (prices.length === 1) {
-      setFormError('A product must have at least one pricing option.');
-      return;
-    }
-    const updated = prices.filter((_, i) => i !== index);
-    setPrices(updated);
+    if (prices.length <= 1) return;
+    setPrices(prices.filter((_, i) => i !== index));
   };
 
-  const handlePriceOptionChange = (index: number, field: keyof PriceOption, value: any) => {
-    const updated = [...prices];
-    if (field === 'price') {
-      updated[index].price = parseFloat(value) || 0;
+  const handlePriceOptionChange = (index: number, field: 'duration' | 'price', value: string) => {
+    const newPrices = [...prices];
+    if (field === 'duration') {
+      newPrices[index].duration = value;
     } else {
-      updated[index].duration = value;
+      newPrices[index].price = parseFloat(value) || 0;
     }
-    setPrices(updated);
+    setPrices(newPrices);
   };
 
   const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
-    // Validations
     if (!name.trim()) return setFormError('Product name is required.');
     if (!description.trim()) return setFormError('Description is required.');
-    
-    for (let i = 0; i < prices.length; i++) {
-      if (!prices[i].duration.trim()) {
-        return setFormError(`Pricing option #${i + 1} is missing a duration.`);
-      }
-      if (prices[i].price < 0) {
-        return setFormError(`Pricing option #${i + 1} price cannot be negative.`);
-      }
+    if (prices.some((p) => !p.duration.trim() || p.price < 0)) {
+      return setFormError('All price options must have a duration name and non-negative price.');
     }
 
     setFormSubmitting(true);
 
     try {
-      const url = '/api/admin/products';
+      const payload = { name, description, prices, image, isActive };
+      const url = modalMode === 'create' ? '/api/admin/products' : `/api/admin/products?id=${currentId}`;
       const method = modalMode === 'create' ? 'POST' : 'PUT';
-      const payload = modalMode === 'create' 
-        ? { name, description, image, prices, isActive }
-        : { id: currentId, name, description, image, prices, isActive };
 
       const res = await fetch(url, {
         method,
@@ -136,44 +161,60 @@ export default function AdminProducts() {
       });
 
       const data = await res.json();
+
       if (!res.ok) {
         throw new Error(data.error || 'Failed to save product');
       }
 
       setIsModalOpen(false);
-      loadProducts();
+      loadData();
     } catch (err: any) {
-      setFormError(err.message || 'Error occurred while saving');
+      setFormError(err.message || 'An error occurred');
     } finally {
       setFormSubmitting(false);
     }
   };
 
-  const handleDeleteProduct = async (id: string, productName: string) => {
-    if (!confirm(`Are you sure you want to delete product "${productName}"?`)) {
-      return;
-    }
+  const handleDeleteProduct = async (id: string, prodName: string) => {
+    if (!confirm(`Are you sure you want to delete "${prodName}"?`)) return;
 
     try {
       const res = await fetch(`/api/admin/products?id=${id}`, {
         method: 'DELETE',
       });
       const data = await res.json();
+
       if (!res.ok) {
         throw new Error(data.error || 'Failed to delete product');
       }
-      loadProducts();
+
+      loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to delete product');
     }
   };
 
+  const getProductStockCount = (productId?: string) => {
+    if (!productId) return 0;
+    return keys.filter((k) => k.productId?._id === productId && !k.isSold).length;
+  };
+
+  const productStockKeys = selectedProductForStock
+    ? keys.filter((k) => k.productId?._id === selectedProductForStock._id)
+    : [];
+
+  const filteredProductStockKeys = productStockKeys.filter((k) => {
+    const q = stockSearchQuery.toLowerCase().trim();
+    if (!q) return true;
+    return k.key.toLowerCase().includes(q) || k.duration.toLowerCase().includes(q) || (k.resellerId?.username && k.resellerId.username.toLowerCase().includes(q));
+  });
+
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1>Product Catalog</h1>
-          <p className="subtitle">Manage all product details and their duration pricing models.</p>
+          <p className="subtitle">Manage products, pricing tiers, and inspect stocked license keys.</p>
         </div>
         <button className="btn btn-primary" onClick={openCreateModal}>
           <Plus size={16} />
@@ -205,60 +246,182 @@ export default function AdminProducts() {
                   <th>Product Name</th>
                   <th>Description</th>
                   <th>Pricing Options</th>
+                  <th>Available Stock</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {products.map((prod) => (
-                  <tr key={prod._id}>
-                    <td style={{ fontWeight: 700 }}>{prod.name}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '300px' }}>
-                      {prod.description}
-                    </td>
-                    <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                        {prod.prices.map((p, idx) => (
-                          <span key={idx} className="badge badge-indigo">
-                            {p.duration}: ₱{p.price.toFixed(2)}
-                          </span>
-                        ))}
-                      </div>
-                    </td>
-                    <td>
-                      {prod.isActive ? (
-                        <span className="badge badge-emerald">Active</span>
-                      ) : (
-                        <span className="badge badge-crimson">Inactive</span>
-                      )}
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '6px' }}>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '6px 10px' }} 
-                          onClick={() => openEditModal(prod)}
-                          title="Edit Product">
-                          <Edit2 size={13} />
-                        </button>
-                        <button 
-                          className="btn btn-danger" 
-                          style={{ padding: '6px 10px', border: 'none' }} 
-                          onClick={() => handleDeleteProduct(prod._id!, prod.name)}
-                          title="Delete Product">
-                          <Trash2 size={13} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {products.map((prod) => {
+                  const stockCount = getProductStockCount(prod._id);
+                  return (
+                    <tr key={prod._id}>
+                      <td style={{ fontWeight: 700 }}>{prod.name}</td>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '280px' }}>
+                        {prod.description}
+                      </td>
+                      <td>
+                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+                          {prod.prices.map((p, idx) => (
+                            <span key={idx} className="badge badge-indigo">
+                              {p.duration}: ₱{p.price.toFixed(2)}
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={stockCount > 0 ? "badge badge-emerald" : "badge badge-crimson"} style={{ fontWeight: 700 }}>
+                          <Key size={11} style={{ marginRight: '4px' }} />
+                          {stockCount} Available
+                        </span>
+                      </td>
+                      <td>
+                        {prod.isActive ? (
+                          <span className="badge badge-emerald">Active</span>
+                        ) : (
+                          <span className="badge badge-crimson">Inactive</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px' }}>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                            onClick={() => openStockViewModal(prod)}
+                            title="View Stocked Keys">
+                            <KeyRound size={13} style={{ color: 'var(--accent-orange)' }} />
+                            View Keys
+                          </button>
+                          <button 
+                            className="btn btn-secondary" 
+                            style={{ padding: '6px 10px' }} 
+                            onClick={() => openEditModal(prod)}
+                            title="Edit Product">
+                            <Edit2 size={13} />
+                          </button>
+                          <button 
+                            className="btn btn-danger" 
+                            style={{ padding: '6px 10px', border: 'none' }} 
+                            onClick={() => handleDeleteProduct(prod._id!, prod.name)}
+                            title="Delete Product">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Modal Dialog */}
+      {/* View Product Stocked Keys Modal */}
+      <Modal isOpen={isStockViewOpen && !!selectedProductForStock} onClose={() => setIsStockViewOpen(false)} maxWidth="700px">
+        {selectedProductForStock && (
+          <>
+            <div className="modal-header">
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: 'var(--radius-sm)',
+                  background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.25)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-indigo)'
+                }}>
+                  <KeyRound size={18} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Stocked License Keys</h2>
+                  <p className="subtitle" style={{ margin: 0, fontSize: '0.8rem' }}>
+                    Product: <strong style={{ color: 'white' }}>{selectedProductForStock.name}</strong>
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsStockViewOpen(false)} className="modal-close">
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Search Filter */}
+            <div className="input-wrapper" style={{ marginTop: '8px' }}>
+              <Search className="input-icon" size={15} />
+              <input 
+                type="text" 
+                className="form-input" 
+                placeholder="Search key code, duration..."
+                value={stockSearchQuery}
+                onChange={(e) => setStockSearchQuery(e.target.value)}
+                style={{ fontSize: '0.85rem' }}
+              />
+            </div>
+
+            {/* Stocked Keys Table */}
+            <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden', maxHeight: '380px', overflowY: 'auto' }}>
+              {productStockKeys.length === 0 ? (
+                <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  No license keys stocked for {selectedProductForStock.name}. Click "Stock Keys (Bulk)" in Manage Keys to add stock.
+                </div>
+              ) : filteredProductStockKeys.length === 0 ? (
+                <div style={{ padding: '30px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                  No keys matched "{stockSearchQuery}".
+                </div>
+              ) : (
+                <table className="table-saas" style={{ fontSize: '0.82rem' }}>
+                  <thead>
+                    <tr>
+                      <th>License Key Code</th>
+                      <th>Duration</th>
+                      <th>Status</th>
+                      <th>Purchased By</th>
+                      <th>Date Added</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredProductStockKeys.map((k) => (
+                      <tr key={k._id}>
+                        <td>
+                          <div className="key-display">
+                            <code className="key-tag" style={{ fontSize: '0.78rem' }}>{k.key}</code>
+                            <CopyButton text={k.key} size={12} />
+                          </div>
+                        </td>
+                        <td>
+                          <span className="badge badge-indigo" style={{ fontSize: '0.7rem' }}>{k.duration}</span>
+                        </td>
+                        <td>
+                          {k.isSold ? (
+                            <span className="badge badge-crimson" style={{ fontSize: '0.7rem' }}>Sold</span>
+                          ) : (
+                            <span className="badge badge-emerald" style={{ fontSize: '0.7rem' }}>Available</span>
+                          )}
+                        </td>
+                        <td>
+                          {k.isSold ? (
+                            <span style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{k.resellerId?.username || 'Unknown'}</span>
+                          ) : (
+                            <span style={{ color: 'var(--text-muted)' }}>—</span>
+                          )}
+                        </td>
+                        <td style={{ color: 'var(--text-secondary)', fontSize: '0.78rem' }}>
+                          {new Date(k.createdAt).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '10px' }}>
+              <button type="button" className="btn btn-secondary" onClick={() => setIsStockViewOpen(false)}>
+                Close
+              </button>
+            </div>
+          </>
+        )}
+      </Modal>
+
+      {/* Edit / Create Product Modal */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="500px">
         <div className="modal-header">
           <h2>{modalMode === 'create' ? 'Create Product' : 'Edit Product'}</h2>

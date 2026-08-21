@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText } from 'lucide-react';
+import { Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText, Search, Key, ShoppingBag, Box } from 'lucide-react';
 import Modal from '@/components/Modal';
+import CopyButton from '@/components/CopyButton';
 
 interface KeyType {
   _id: string;
@@ -42,6 +43,7 @@ export default function AdminKeys() {
 
   // Filter State
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'sold'>('all');
+  const [productFilter, setProductFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = async () => {
@@ -169,6 +171,10 @@ export default function AdminKeys() {
       (statusFilter === 'available' && !k.isSold) || 
       (statusFilter === 'sold' && k.isSold);
       
+    const productMatch =
+      productFilter === 'all' ||
+      k.productId?._id === productFilter;
+
     const query = searchQuery.toLowerCase().trim();
     const matchesSearch = 
       !query || 
@@ -176,17 +182,21 @@ export default function AdminKeys() {
       k.productId?.name?.toLowerCase().includes(query) ||
       (k.resellerId?.username && k.resellerId.username.toLowerCase().includes(query));
 
-    return statusMatch && matchesSearch;
+    return statusMatch && productMatch && matchesSearch;
   });
+
+  const totalAvailableCount = keys.filter((k) => !k.isSold).length;
+  const totalSoldCount = keys.filter((k) => k.isSold).length;
+  const totalInventoryCount = keys.length;
 
   const selectedProductObj = products.find((p) => p._id === selectedProductId);
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '20px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '20px' }}>
         <div>
           <h1>License Key Inventory</h1>
-          <p className="subtitle">Upload, monitor, and manage your stocked license keys.</p>
+          <p className="subtitle">Upload, monitor, view, and manage your stocked license keys.</p>
         </div>
         <button className="btn btn-primary" onClick={openStockModal} disabled={products.length === 0}>
           <Plus size={16} />
@@ -194,28 +204,82 @@ export default function AdminKeys() {
         </button>
       </div>
 
+      {/* Overview Stat Cards */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px', marginBottom: '28px' }}>
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', background: 'rgba(16, 185, 129, 0.12)', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-emerald)' }}>
+            <Key size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Available Stock</span>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '2px' }}>
+              {totalAvailableCount} Keys
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', background: 'rgba(255, 94, 0, 0.12)', border: '1px solid rgba(255, 94, 0, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-orange)' }}>
+            <ShoppingBag size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Sold Keys</span>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--accent-orange)', marginTop: '2px' }}>
+              {totalSoldCount} Keys
+            </div>
+          </div>
+        </div>
+
+        <div className="card" style={{ padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ width: '42px', height: '42px', borderRadius: 'var(--radius-sm)', background: 'rgba(99, 102, 241, 0.12)', border: '1px solid rgba(99, 102, 241, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-indigo)' }}>
+            <Box size={20} />
+          </div>
+          <div>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Inventory</span>
+            <div style={{ fontSize: '1.4rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '2px' }}>
+              {totalInventoryCount} Keys
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Filters Bar */}
-      <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ display: 'flex', gap: '14px', marginBottom: '24px', alignItems: 'center', flexWrap: 'wrap' }}>
         {/* Search */}
-        <div style={{ flex: 1, minWidth: '240px' }}>
+        <div style={{ flex: 1, minWidth: '220px' }}>
           <input 
             type="text" 
             className="form-input" 
-            placeholder="Search by key, product, or reseller..." 
+            placeholder="Search by key, product name, or reseller..." 
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
 
+        {/* Filter by Product */}
+        <div style={{ width: '190px' }}>
+          <select
+            className="form-input"
+            value={productFilter}
+            onChange={(e) => setProductFilter(e.target.value)}
+            style={{ background: 'var(--bg-sidebar)' }}
+          >
+            <option value="all">All Products</option>
+            {products.map((p) => (
+              <option key={p._id} value={p._id}>{p.name}</option>
+            ))}
+          </select>
+        </div>
+
         {/* Status Filter */}
-        <div style={{ width: '160px' }}>
+        <div style={{ width: '170px' }}>
           <select 
             className="form-input" 
             value={statusFilter} 
             onChange={(e) => setStatusFilter(e.target.value as any)}
             style={{ background: 'var(--bg-sidebar)' }}
           >
-            <option value="all">All Keys</option>
+            <option value="all">All Statuses</option>
             <option value="available">Available / Stocked</option>
             <option value="sold">Sold Keys</option>
           </select>
@@ -242,7 +306,7 @@ export default function AdminKeys() {
         </div>
       ) : filteredKeys.length === 0 ? (
         <div className="card" style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          No keys match your filters.
+          No license keys match your filters.
         </div>
       ) : (
         <div className="table-card">
@@ -251,7 +315,7 @@ export default function AdminKeys() {
               <thead>
                 <tr>
                   <th>Product</th>
-                  <th>License Key</th>
+                  <th>License Key Code</th>
                   <th>Duration</th>
                   <th>Status</th>
                   <th>Reseller / Price</th>
@@ -266,7 +330,10 @@ export default function AdminKeys() {
                       {keyItem.productId?.name || <span style={{ color: 'var(--text-muted)' }}>Deleted Product</span>}
                     </td>
                     <td>
-                      <code className="key-tag">{keyItem.key}</code>
+                      <div className="key-display">
+                        <code className="key-tag">{keyItem.key}</code>
+                        <CopyButton text={keyItem.key} size={12} />
+                      </div>
                     </td>
                     <td>
                       <span className="badge badge-indigo">{keyItem.duration}</span>
