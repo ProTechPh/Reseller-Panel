@@ -16,11 +16,16 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
   const fetchUserData = async () => {
     try {
       const res = await fetch('/api/auth/me');
-      if (!res.ok) { router.replace('/'); return; }
+      if (!res.ok) {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        router.replace('/');
+        return;
+      }
       const data = await res.json();
       if (data.success && data.user && data.user.role === 'reseller') {
         setReseller(data.user);
       } else {
+        await fetch('/api/auth/logout', { method: 'POST' });
         router.replace('/');
       }
     } catch {

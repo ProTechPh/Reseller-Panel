@@ -17,6 +17,12 @@ export async function POST(req: Request) {
     }
 
     await dbConnect();
+
+    const currentUser = await User.findById(authSession.userId);
+    if (!currentUser || currentUser.isBanned) {
+      return NextResponse.json({ error: 'Your account has been banned by the administrator.' }, { status: 403 });
+    }
+
     const { productId, duration } = await req.json();
 
     if (!productId || !duration) {

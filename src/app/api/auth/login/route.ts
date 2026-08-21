@@ -23,6 +23,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (user.isBanned) {
+      return NextResponse.json(
+        { error: 'Your account has been banned by the administrator.' },
+        { status: 403 }
+      );
+    }
+
     const isMatch = await comparePassword(password, user.passwordHash);
     if (!isMatch) {
       return NextResponse.json(

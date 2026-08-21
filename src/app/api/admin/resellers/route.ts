@@ -12,35 +12,33 @@ export async function GET() {
     }
 
     await dbConnect();
-    // Import LicenseKey model dynamically if needed or rely on registered model
     const LicenseKey = (await import('@/models/LicenseKey')).default;
 
-    // Find all users with role 'reseller'
-    const resellers = await User.find({ role: 'reseller' }).select('-passwordHash').sort({ createdAt: -1 });
+    // Find all users (admins and resellers)
+    const users = await User.find({}).select('-passwordHash').sort({ createdAt: -1 });
+    const userIds = users.map(u => u._id);
 
-    const resellerIds = resellers.map(r => r._id);
-
-    // Fetch all sold keys for these resellers
+    // Fetch all sold keys for sales breakdown
     const soldKeys = await LicenseKey.find({
-      resellerId: { $in: resellerIds },
+      resellerId: { $in: userIds },
       isSold: true,
     }).populate('productId', 'name image').sort({ soldAt: -1, updatedAt: -1 });
 
-    const salesByReseller: Record<string, { totalPurchases: number; totalSpent: number; purchases: any[] }> = {};
+    const salesByUser: Record<string, { totalPurchases: number; totalSpent: number; purchases: any[] }> = {};
 
-    for (const r of resellers) {
-      salesByReseller[r._id.toString()] = { totalPurchases: 0, totalSpent: 0, purchases: [] };
+    for (const u of users) {
+      salesByUser[u._id.toString()] = { totalPurchases: 0, totalSpent: 0, purchases: [] };
     }
 
     for (const key of soldKeys) {
       if (key.resellerId) {
-        const rId = key.resellerId.toString();
-        if (!salesByReseller[rId]) {
-          salesByReseller[rId] = { totalPurchases: 0, totalSpent: 0, purchases: [] };
+        const uId = key.resellerId.toString();
+        if (!salesByUser[uId]) {
+          salesByUser[uId] = { totalPurchases: 0, totalSpent: 0, purchases: [] };
         }
-        salesByReseller[rId].totalPurchases += 1;
-        salesByReseller[rId].totalSpent += (key.price || 0);
-        salesByReseller[rId].purchases.push({
+        salesByUser[uId].totalPurchases += 1;
+        salesByUser[uId].totalSpent += (key.price || 0);
+        salesByUser[uId].purchases.push({
           _id: key._id,
           key: key.key,
           productName: (key.productId as any)?.name || 'Deleted Product',
@@ -51,20 +49,21 @@ export async function GET() {
       }
     }
 
-    const resellersWithSales = resellers.map((r) => {
-      const rObj = r.toObject();
-      const sales = salesByReseller[r._id.toString()] || { totalPurchases: 0, totalSpent: 0, purchases: [] };
+    const usersWithSales = users.map((u) => {
+      const uObj = u.toObject();
+      const sales = salesByUser[u._id.toString()] || { totalPurchases: 0, totalSpent: 0, purchases: [] };
       return {
-        ...rObj,
+        ...uObj,
+        isBanned: Boolean(u.isBanned),
         totalPurchases: sales.totalPurchases,
         totalSpent: sales.totalSpent,
         purchases: sales.purchases,
       };
     });
 
-    return NextResponse.json({ success: true, resellers: resellersWithSales });
+    return NextResponse.json({ success: true, resellers: usersWithSales, currentAdminId: session.userId });
   } catch (error: any) {
-    console.error('Fetch resellers error:', error);
+    console.error('Fetch users error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
@@ -80,11 +79,16 @@ export async function POST(req: Request) {
     const body = await req.json();
     const { action } = body;
 
+    // 1. Create User (Admin or Reseller)
     if (action === 'create') {
-      const { username, password, initialBalance } = body;
+      const { username, password, role = 'reseller', initialBalance = 0 } = body;
 
       if (!username || !password) {
         return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
+      }
+
+      if (role !== 'admin' && role !== 'reseller') {
+        return NextResponse.json({ error: 'Invalid user role selected' }, { status: 400 });
       }
 
       const existing = await User.findOne({ username: username.toLowerCase().trim() });
@@ -93,23 +97,23 @@ export async function POST(req: Request) {
       }
 
       const passwordHash = await hashPassword(password);
-      const balanceValue = parseFloat(initialBalance) || 0;
+      const balanceValue = role === 'reseller' ? (parseFloat(initialBalance) || 0) : 0;
 
       if (balanceValue < 0) {
         return NextResponse.json({ error: 'Initial balance cannot be negative' }, { status: 400 });
       }
 
-      const newReseller = await User.create({
+      const newUser = await User.create({
         username: username.toLowerCase().trim(),
         passwordHash,
-        role: 'reseller',
+        role,
         balance: balanceValue,
+        isBanned: false,
       });
 
-      // If initial balance is positive, log a transaction
-      if (balanceValue > 0) {
+      if (role === 'reseller' && balanceValue > 0) {
         await Transaction.create({
-          userId: newReseller._id,
+          userId: newUser._id,
           type: 'balance_add',
           amount: balanceValue,
           description: 'Initial balance set by admin',
@@ -118,16 +122,49 @@ export async function POST(req: Request) {
 
       return NextResponse.json({
         success: true,
-        reseller: {
-          id: newReseller._id.toString(),
-          username: newReseller.username,
-          role: newReseller.role,
-          balance: newReseller.balance,
-          createdAt: newReseller.createdAt,
+        user: {
+          id: newUser._id.toString(),
+          username: newUser.username,
+          role: newUser.role,
+          balance: newUser.balance,
+          isBanned: newUser.isBanned,
+          createdAt: newUser.createdAt,
         },
       });
     }
 
+    // 2. Toggle Ban Status (Ban / Unban)
+    if (action === 'toggle_ban') {
+      const { userId } = body;
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      }
+
+      if (userId === session.userId) {
+        return NextResponse.json({ error: 'You cannot ban your own admin account.' }, { status: 400 });
+      }
+
+      const targetUser = await User.findById(userId);
+      if (!targetUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      const nextBannedState = !Boolean(targetUser.isBanned);
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        { $set: { isBanned: nextBannedState } },
+        { new: true }
+      );
+
+      return NextResponse.json({
+        success: true,
+        isBanned: Boolean(updatedUser?.isBanned),
+        message: updatedUser?.isBanned ? `User ${updatedUser.username} has been banned.` : `User ${updatedUser?.username} has been unbanned.`,
+      });
+    }
+
+    // 3. Adjust Balance
     if (action === 'adjust_balance') {
       const { resellerId, type, amount, description } = body;
 
@@ -140,8 +177,8 @@ export async function POST(req: Request) {
       }
 
       const reseller = await User.findById(resellerId);
-      if (!reseller || reseller.role !== 'reseller') {
-        return NextResponse.json({ error: 'Reseller not found' }, { status: 404 });
+      if (!reseller) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
       }
 
       const adjustmentAmount = parseFloat(amount);
@@ -172,7 +209,42 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
   } catch (error: any) {
-    console.error('Adjust resellers error:', error);
+    console.error('Admin user POST error:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await getSessionUser();
+    if (!session || session.role !== 'admin') {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
+    }
+
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('id');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'User ID parameter is required' }, { status: 400 });
+    }
+
+    if (userId === session.userId) {
+      return NextResponse.json({ error: 'You cannot delete your own admin account.' }, { status: 400 });
+    }
+
+    await dbConnect();
+    const deletedUser = await User.findByIdAndDelete(userId);
+
+    if (!deletedUser) {
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      message: `User ${deletedUser.username} deleted successfully.`,
+    });
+  } catch (error: any) {
+    console.error('Delete user error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

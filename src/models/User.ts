@@ -5,6 +5,7 @@ export interface IUser extends Document {
   passwordHash: string;
   role: 'admin' | 'reseller';
   balance: number;
+  isBanned: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,10 +34,18 @@ const UserSchema: Schema<IUser> = new Schema(
       default: 0,
       min: [0, 'Balance cannot be negative'],
     },
+    isBanned: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );
 
-const User: Model<IUser> = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);
+if (mongoose.models.User) {
+  delete mongoose.models.User;
+}
+
+const User: Model<IUser> = mongoose.model<IUser>('User', UserSchema);
 
 export default User;

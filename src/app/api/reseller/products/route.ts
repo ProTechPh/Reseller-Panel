@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import Product from '@/models/Product';
-import { getSessionUser } from '@/lib/auth';
+import User from '@/models/User';
+import { getSessionUser, clearSessionCookie } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -11,6 +12,12 @@ export async function GET() {
     }
 
     await dbConnect();
+    const currentUser = await User.findById(session.userId);
+    if (!currentUser || currentUser.isBanned) {
+      await clearSessionCookie();
+      return NextResponse.json({ error: 'Your account has been banned by the administrator.' }, { status: 403 });
+    }
+
     const products = await Product.find({ isActive: true }).sort({ name: 1 });
 
     return NextResponse.json({ success: true, products });

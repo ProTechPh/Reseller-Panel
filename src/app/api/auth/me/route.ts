@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
-import { getSessionUser } from '@/lib/auth';
+import { getSessionUser, clearSessionCookie } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -12,8 +12,9 @@ export async function GET() {
 
     await dbConnect();
     const user = await User.findById(session.userId);
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    if (!user || user.isBanned) {
+      await clearSessionCookie();
+      return NextResponse.json({ error: 'User not found or account banned' }, { status: 401 });
     }
 
     return NextResponse.json({

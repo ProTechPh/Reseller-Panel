@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, DollarSign, X, ShieldAlert, Sparkles, UserPlus, ShoppingBag, Search } from 'lucide-react';
+import { Plus, DollarSign, X, ShieldAlert, Sparkles, UserPlus, ShoppingBag, Search, Ban, CheckCircle, Trash2, ShieldCheck, UserCheck } from 'lucide-react';
 import CopyButton from '@/components/CopyButton';
 import Modal from '@/components/Modal';
 
@@ -14,10 +14,12 @@ interface PurchasedKey {
   soldAt: string;
 }
 
-interface ResellerType {
+interface UserAccountType {
   _id: string;
   username: string;
+  role: 'admin' | 'reseller';
   balance: number;
+  isBanned?: boolean;
   createdAt: string;
   totalPurchases?: number;
   totalSpent?: number;
@@ -25,19 +27,21 @@ interface ResellerType {
 }
 
 export default function AdminResellers() {
-  const [resellers, setResellers] = useState<ResellerType[]>([]);
+  const [users, setUsers] = useState<UserAccountType[]>([]);
+  const [currentAdminId, setCurrentAdminId] = useState<string>('');
   const [loading, setLoading] = useState(true);
   
   // Modals state
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isAdjustOpen, setIsAdjustOpen] = useState(false);
   const [isSalesOpen, setIsSalesOpen] = useState(false);
-  const [selectedReseller, setSelectedReseller] = useState<ResellerType | null>(null);
+  const [selectedUser, setSelectedUser] = useState<UserAccountType | null>(null);
   const [salesSearch, setSalesSearch] = useState('');
 
-  // Create Reseller Form State
+  // Create User Form State
   const [createUsername, setCreateUsername] = useState('');
   const [createPassword, setCreatePassword] = useState('');
+  const [createRole, setCreateRole] = useState<'reseller' | 'admin'>('reseller');
   const [createBalance, setCreateBalance] = useState('0');
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSubmitting, setCreateSubmitting] = useState(false);
@@ -49,37 +53,39 @@ export default function AdminResellers() {
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [adjustSubmitting, setAdjustSubmitting] = useState(false);
 
-  const loadResellers = async () => {
+  const loadUsers = async () => {
     try {
       setLoading(true);
       const res = await fetch('/api/admin/resellers');
       if (res.ok) {
         const data = await res.json();
         if (data.success) {
-          setResellers(data.resellers);
+          setUsers(data.resellers);
+          if (data.currentAdminId) setCurrentAdminId(data.currentAdminId);
         }
       }
     } catch (err) {
-      console.error('Failed to load resellers:', err);
+      console.error('Failed to load users:', err);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadResellers();
+    loadUsers();
   }, []);
 
   const openCreateModal = () => {
     setCreateUsername('');
     setCreatePassword('');
+    setCreateRole('reseller');
     setCreateBalance('0');
     setCreateError(null);
     setIsCreateOpen(true);
   };
 
-  const openAdjustModal = (reseller: ResellerType) => {
-    setSelectedReseller(reseller);
+  const openAdjustModal = (user: UserAccountType) => {
+    setSelectedUser(user);
     setAdjustType('balance_add');
     setAdjustAmount('0');
     setAdjustReason('');
@@ -87,8 +93,8 @@ export default function AdminResellers() {
     setIsAdjustOpen(true);
   };
 
-  const openSalesModal = (reseller: ResellerType) => {
-    setSelectedReseller(reseller);
+  const openSalesModal = (user: UserAccountType) => {
+    setSelectedUser(user);
     setSalesSearch('');
     setIsSalesOpen(true);
   };
@@ -104,7 +110,7 @@ export default function AdminResellers() {
     }
     
     const balanceNum = parseFloat(createBalance);
-    if (isNaN(balanceNum) || balanceNum < 0) {
+    if (createRole === 'reseller' && (isNaN(balanceNum) || balanceNum < 0)) {
       return setCreateError('Initial balance cannot be negative.');
     }
 
@@ -118,17 +124,18 @@ export default function AdminResellers() {
           action: 'create',
           username: createUsername.trim(),
           password: createPassword,
-          initialBalance: balanceNum,
+          role: createRole,
+          initialBalance: createRole === 'reseller' ? balanceNum : 0,
         }),
       });
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.error || 'Failed to create reseller');
+        throw new Error(data.error || 'Failed to create user');
       }
 
       setIsCreateOpen(false);
-      loadResellers();
+      loadUsers();
     } catch (err: any) {
       setCreateError(err.message || 'An error occurred');
     } finally {
@@ -136,19 +143,70 @@ export default function AdminResellers() {
     }
   };
 
+  const handleToggleBan = async (user: UserAccountType) => {
+    const actionText = user.isBanned ? 'unban' : 'ban';
+    if (!confirm(`Are you sure you want to ${actionText} user "${user.username}"?`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/admin/resellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'toggle_ban',
+          userId: user._id,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || `Failed to ${actionText} user`);
+      }
+
+      setUsers((prev) =>
+        prev.map((u) => (u._id === user._id ? { ...u, isBanned: data.isBanned } : u))
+      );
+      loadUsers();
+    } catch (err: any) {
+      alert(err.message || 'Failed to update ban status');
+    }
+  };
+
+  const handleDeleteUser = async (user: UserAccountType) => {
+    if (!confirm(`Are you sure you want to permanently delete user "${user.username}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/admin/resellers?id=${user._id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete user');
+      }
+
+      loadUsers();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete user');
+    }
+  };
+
   const handleAdjustSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAdjustError(null);
 
-    if (!selectedReseller) return;
+    if (!selectedUser) return;
     
     const amountNum = parseFloat(adjustAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
       return setAdjustError('Amount must be greater than zero.');
     }
 
-    if (adjustType === 'balance_deduct' && selectedReseller.balance < amountNum) {
-      return setAdjustError(`Deduction amount exceeds reseller's balance (₱${selectedReseller.balance.toFixed(2)}).`);
+    if (adjustType === 'balance_deduct' && selectedUser.balance < amountNum) {
+      return setAdjustError(`Deduction amount exceeds user's balance (₱${selectedUser.balance.toFixed(2)}).`);
     }
 
     setAdjustSubmitting(true);
@@ -159,7 +217,7 @@ export default function AdminResellers() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           action: 'adjust_balance',
-          resellerId: selectedReseller._id,
+          resellerId: selectedUser._id,
           type: adjustType,
           amount: amountNum,
           description: adjustReason.trim() || undefined,
@@ -172,7 +230,7 @@ export default function AdminResellers() {
       }
 
       setIsAdjustOpen(false);
-      loadResellers();
+      loadUsers();
     } catch (err: any) {
       setAdjustError(err.message || 'An error occurred');
     } finally {
@@ -180,7 +238,7 @@ export default function AdminResellers() {
     }
   };
 
-  const filteredPurchases = selectedReseller?.purchases?.filter((item) => {
+  const filteredPurchases = selectedUser?.purchases?.filter((item) => {
     const q = salesSearch.toLowerCase().trim();
     if (!q) return true;
     return item.productName.toLowerCase().includes(q) || item.key.toLowerCase().includes(q) || item.duration.toLowerCase().includes(q);
@@ -188,14 +246,14 @@ export default function AdminResellers() {
 
   return (
     <div className="animate-fade-in">
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
-          <h1>Reseller Accounts</h1>
-          <p className="subtitle">Register new resellers, monitor sales history, and manage panel balances.</p>
+          <h1>User & Account Management</h1>
+          <p className="subtitle">Register Admins or Resellers, manage account bans, delete accounts, and monitor sales.</p>
         </div>
         <button className="btn btn-primary" onClick={openCreateModal}>
           <UserPlus size={16} />
-          Create Reseller
+          Create User Account
         </button>
       </div>
 
@@ -210,9 +268,9 @@ export default function AdminResellers() {
             animation: 'spin 1s linear infinite',
           }} />
         </div>
-      ) : resellers.length === 0 ? (
+      ) : users.length === 0 ? (
         <div className="card" style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          No resellers registered yet. Click "Create Reseller" to add your first reseller.
+          No user accounts found. Click "Create User Account" to add your first user.
         </div>
       ) : (
         <div className="table-card">
@@ -221,7 +279,8 @@ export default function AdminResellers() {
               <thead>
                 <tr>
                   <th>Username</th>
-                  <th>Registration Date</th>
+                  <th>Role</th>
+                  <th>Status</th>
                   <th>Balance</th>
                   <th>Keys Bought</th>
                   <th>Total Spent</th>
@@ -229,58 +288,253 @@ export default function AdminResellers() {
                 </tr>
               </thead>
               <tbody>
-                {resellers.map((reseller) => (
-                  <tr key={reseller._id}>
-                    <td style={{ fontWeight: 700 }}>{reseller.username}</td>
-                    <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
-                      {new Date(reseller.createdAt).toLocaleDateString()}
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: reseller.balance > 0 ? 'var(--accent-emerald)' : 'var(--text-secondary)' }}>
-                        ₱{reseller.balance.toFixed(2)}
-                      </span>
-                    </td>
-                    <td>
-                      <span className="badge badge-indigo">
-                        {reseller.totalPurchases || 0} Keys
-                      </span>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 700, color: 'var(--accent-orange)' }}>
-                        ₱{(reseller.totalSpent || 0).toFixed(2)}
-                      </span>
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <div style={{ display: 'inline-flex', gap: '8px' }}>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '6px 10px', fontSize: '0.8rem' }} 
-                          onClick={() => openSalesModal(reseller)}
-                          title="View Purchased Items & Sales History">
-                          <ShoppingBag size={13} style={{ color: 'var(--accent-orange)' }} />
-                          Sales & Items
-                        </button>
-                        <button 
-                          className="btn btn-secondary" 
-                          style={{ padding: '6px 10px', fontSize: '0.8rem' }} 
-                          onClick={() => openAdjustModal(reseller)}
-                          title="Adjust Reseller Balance">
-                          <DollarSign size={13} style={{ color: 'var(--accent-emerald)' }} />
-                          Adjust Balance
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
+                {users.map((user) => {
+                  const isCurrentAdmin = user._id === currentAdminId;
+                  return (
+                    <tr key={user._id} style={{ opacity: user.isBanned ? 0.65 : 1 }}>
+                      <td style={{ fontWeight: 700 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span>{user.username}</span>
+                          {isCurrentAdmin && (
+                            <span style={{ fontSize: '0.65rem', background: 'rgba(255,94,0,0.15)', color: 'var(--accent-orange)', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,94,0,0.3)' }}>
+                              YOU
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {user.role === 'admin' ? (
+                          <span className="badge badge-orange">
+                            <ShieldCheck size={11} style={{ marginRight: '3px' }} />
+                            Admin
+                          </span>
+                        ) : (
+                          <span className="badge badge-indigo">
+                            <UserCheck size={11} style={{ marginRight: '3px' }} />
+                            Reseller
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        {user.isBanned ? (
+                          <span className="badge badge-crimson">
+                            <Ban size={11} style={{ marginRight: '3px' }} />
+                            Banned
+                          </span>
+                        ) : (
+                          <span className="badge badge-emerald">
+                            <CheckCircle size={11} style={{ marginRight: '3px' }} />
+                            Active
+                          </span>
+                        )}
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: user.balance > 0 ? 'var(--accent-emerald)' : 'var(--text-secondary)' }}>
+                          ₱{user.balance.toFixed(2)}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                          {user.role === 'reseller' ? `${user.totalPurchases || 0} Keys` : 'N/A'}
+                        </span>
+                      </td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: user.role === 'reseller' ? 'var(--accent-orange)' : 'var(--text-muted)' }}>
+                          {user.role === 'reseller' ? `₱${(user.totalSpent || 0).toFixed(2)}` : 'N/A'}
+                        </span>
+                      </td>
+                      <td style={{ textAlign: 'right' }}>
+                        <div style={{ display: 'inline-flex', gap: '6px', alignItems: 'center' }}>
+                          {user.role === 'reseller' && (
+                            <>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '6px 10px', fontSize: '0.8rem' }} 
+                                onClick={() => openSalesModal(user)}
+                                title="View Sales & Purchased Items">
+                                <ShoppingBag size={13} style={{ color: 'var(--accent-orange)' }} />
+                                Sales & Items
+                              </button>
+                              <button 
+                                className="btn btn-secondary" 
+                                style={{ padding: '6px 10px', fontSize: '0.8rem' }} 
+                                onClick={() => openAdjustModal(user)}
+                                title="Adjust Balance">
+                                <DollarSign size={13} style={{ color: 'var(--accent-emerald)' }} />
+                                Balance
+                              </button>
+                            </>
+                          )}
+
+                          {!isCurrentAdmin && (
+                            <>
+                              <button
+                                className={user.isBanned ? "btn btn-secondary" : "btn btn-danger"}
+                                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                                onClick={() => handleToggleBan(user)}
+                                title={user.isBanned ? "Unban User Account" : "Ban User Account"}
+                              >
+                                <Ban size={13} />
+                                {user.isBanned ? 'Unban' : 'Ban'}
+                              </button>
+
+                              <button
+                                className="btn btn-danger"
+                                style={{ padding: '6px 10px' }}
+                                onClick={() => handleDeleteUser(user)}
+                                title="Delete User Account"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
+      {/* Create User Modal (Admin or Reseller) */}
+      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)}>
+        <div className="modal-header">
+          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <UserPlus size={18} color="var(--accent-indigo)" />
+            Create User Account
+          </h2>
+          <button onClick={() => setIsCreateOpen(false)} className="modal-close">
+            <X size={18} />
+          </button>
+        </div>
+
+        {createError && (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            background: 'rgba(244, 63, 94, 0.06)',
+            border: '1px solid rgba(244, 63, 94, 0.15)',
+            color: 'var(--accent-crimson)',
+            padding: '10px 14px',
+            borderRadius: 'var(--radius-sm)',
+            fontSize: '0.8rem',
+          }}>
+            <ShieldAlert size={15} style={{ flexShrink: 0 }} />
+            <span>{createError}</span>
+          </div>
+        )}
+
+        <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Account Role Selector */}
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" htmlFor="create-role">Account Role</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+              <button
+                type="button"
+                onClick={() => setCreateRole('reseller')}
+                style={{
+                  padding: '10px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: createRole === 'reseller' ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)',
+                  background: createRole === 'reseller' ? 'rgba(255, 94, 0, 0.08)' : 'var(--bg-input)',
+                  color: 'white',
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                <UserCheck size={15} color="var(--accent-indigo)" />
+                Reseller
+              </button>
+              <button
+                type="button"
+                onClick={() => setCreateRole('admin')}
+                style={{
+                  padding: '10px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: createRole === 'admin' ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)',
+                  background: createRole === 'admin' ? 'rgba(255, 94, 0, 0.08)' : 'var(--bg-input)',
+                  color: 'white',
+                  fontWeight: 650,
+                  cursor: 'pointer',
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                }}
+              >
+                <ShieldCheck size={15} color="var(--accent-orange)" />
+                Administrator
+              </button>
+            </div>
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" htmlFor="res-user">Username</label>
+            <input 
+              id="res-user"
+              type="text" 
+              className="form-input" 
+              placeholder="Enter username"
+              value={createUsername}
+              onChange={(e) => setCreateUsername(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label" htmlFor="res-pass">Password</label>
+            <input 
+              id="res-pass"
+              type="password" 
+              className="form-input" 
+              placeholder="Enter password"
+              value={createPassword}
+              onChange={(e) => setCreatePassword(e.target.value)}
+              required
+            />
+          </div>
+
+          {createRole === 'reseller' && (
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="res-bal">Initial Balance (₱)</label>
+              <input 
+                id="res-bal"
+                type="number" 
+                step="0.01"
+                min="0"
+                className="form-input" 
+                placeholder="0.00"
+                value={createBalance}
+                onChange={(e) => setCreateBalance(e.target.value)}
+                required
+              />
+            </div>
+          )}
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+            <button type="button" className="btn btn-secondary" onClick={() => setIsCreateOpen(false)}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary" disabled={createSubmitting}>
+              {createSubmitting ? 'Creating...' : `Create ${createRole === 'admin' ? 'Admin' : 'Reseller'}`}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
       {/* Sales & Purchased Items Modal */}
-      <Modal isOpen={isSalesOpen && !!selectedReseller} onClose={() => setIsSalesOpen(false)} maxWidth="750px">
-        {selectedReseller && (
+      <Modal isOpen={isSalesOpen && !!selectedUser} onClose={() => setIsSalesOpen(false)} maxWidth="750px">
+        {selectedUser && (
           <>
             <div className="modal-header">
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
@@ -294,7 +548,7 @@ export default function AdminResellers() {
                 <div>
                   <h2 style={{ fontSize: '1.2rem', margin: 0 }}>Sales & Purchases Overview</h2>
                   <p className="subtitle" style={{ margin: 0, fontSize: '0.8rem' }}>
-                    Reseller: <strong style={{ color: 'white' }}>{selectedReseller.username}</strong>
+                    Reseller: <strong style={{ color: 'white' }}>{selectedUser.username}</strong>
                   </p>
                 </div>
               </div>
@@ -308,21 +562,21 @@ export default function AdminResellers() {
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Current Balance</span>
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '2px' }}>
-                  ₱{selectedReseller.balance.toFixed(2)}
+                  ₱{selectedUser.balance.toFixed(2)}
                 </div>
               </div>
 
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Total Keys Bought</span>
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-indigo)', marginTop: '2px' }}>
-                  {selectedReseller.totalPurchases || 0} Keys
+                  {selectedUser.totalPurchases || 0} Keys
                 </div>
               </div>
 
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 16px' }}>
                 <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Total Funds Spent</span>
                 <div style={{ fontSize: '1.3rem', fontWeight: 800, color: 'var(--accent-orange)', marginTop: '2px' }}>
-                  ₱{(selectedReseller.totalSpent || 0).toFixed(2)}
+                  ₱{(selectedUser.totalSpent || 0).toFixed(2)}
                 </div>
               </div>
             </div>
@@ -342,7 +596,7 @@ export default function AdminResellers() {
 
             {/* Purchases Table */}
             <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', overflow: 'hidden', maxHeight: '350px', overflowY: 'auto' }}>
-              {!selectedReseller.purchases || selectedReseller.purchases.length === 0 ? (
+              {!selectedUser.purchases || selectedUser.purchases.length === 0 ? (
                 <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
                   This reseller has not purchased any license keys yet.
                 </div>
@@ -396,91 +650,9 @@ export default function AdminResellers() {
         )}
       </Modal>
 
-      {/* Create Reseller Modal */}
-      <Modal isOpen={isCreateOpen} onClose={() => setIsCreateOpen(false)}>
-        <div className="modal-header">
-          <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <UserPlus size={18} color="var(--accent-indigo)" />
-            Create Reseller
-          </h2>
-          <button onClick={() => setIsCreateOpen(false)} className="modal-close">
-            <X size={18} />
-          </button>
-        </div>
-
-        {createError && (
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            background: 'rgba(244, 63, 94, 0.06)',
-            border: '1px solid rgba(244, 63, 94, 0.15)',
-            color: 'var(--accent-crimson)',
-            padding: '10px 14px',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: '0.8rem',
-          }}>
-            <ShieldAlert size={15} style={{ flexShrink: 0 }} />
-            <span>{createError}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleCreateSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="res-user">Username</label>
-            <input 
-              id="res-user"
-              type="text" 
-              className="form-input" 
-              placeholder="Enter username"
-              value={createUsername}
-              onChange={(e) => setCreateUsername(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="res-pass">Password</label>
-            <input 
-              id="res-pass"
-              type="password" 
-              className="form-input" 
-              placeholder="Enter password"
-              value={createPassword}
-              onChange={(e) => setCreatePassword(e.target.value)}
-              required
-            />
-          </div>
-
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="res-bal">Initial Balance (₱)</label>
-            <input 
-              id="res-bal"
-              type="number" 
-              step="0.01"
-              min="0"
-              className="form-input" 
-              placeholder="0.00"
-              value={createBalance}
-              onChange={(e) => setCreateBalance(e.target.value)}
-              required
-            />
-          </div>
-
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-            <button type="button" className="btn btn-secondary" onClick={() => setIsCreateOpen(false)}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary" disabled={createSubmitting}>
-              {createSubmitting ? 'Creating...' : 'Create Account'}
-            </button>
-          </div>
-        </form>
-      </Modal>
-
       {/* Adjust Balance Modal */}
-      <Modal isOpen={isAdjustOpen && !!selectedReseller} onClose={() => setIsAdjustOpen(false)}>
-        {selectedReseller && (
+      <Modal isOpen={isAdjustOpen && !!selectedUser} onClose={() => setIsAdjustOpen(false)}>
+        {selectedUser && (
           <>
             <div className="modal-header">
               <h2>Adjust Balance</h2>
@@ -496,8 +668,8 @@ export default function AdminResellers() {
               padding: '12px 14px',
               fontSize: '0.85rem',
             }}>
-              <div>Reseller: <strong style={{ color: 'white' }}>{selectedReseller.username}</strong></div>
-              <div style={{ marginTop: '4px' }}>Current Balance: <strong style={{ color: 'var(--accent-emerald)' }}>₱{selectedReseller.balance.toFixed(2)}</strong></div>
+              <div>Reseller: <strong style={{ color: 'white' }}>{selectedUser.username}</strong></div>
+              <div style={{ marginTop: '4px' }}>Current Balance: <strong style={{ color: 'var(--accent-emerald)' }}>₱{selectedUser.balance.toFixed(2)}</strong></div>
             </div>
 
             {adjustError && (
