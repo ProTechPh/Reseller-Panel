@@ -13,7 +13,9 @@ export async function GET() {
     }
 
     await dbConnect();
-    const LicenseKey = (await import('@/models/LicenseKey')).default;
+    // Ensure Product and LicenseKey models are registered before populate
+    const ProductModel = (await import('@/models/Product')).default;
+    const LicenseKeyModel = (await import('@/models/LicenseKey')).default;
 
     // Find all users (admins and resellers) with populated allowedProducts
     const users = await User.find({})
@@ -24,7 +26,7 @@ export async function GET() {
     const userIds = users.map(u => u._id);
 
     // Fetch all sold keys for sales breakdown
-    const soldKeys = await LicenseKey.find({
+    const soldKeys = await LicenseKeyModel.find({
       resellerId: { $in: userIds },
       isSold: true,
     }).populate('productId', 'name image').sort({ soldAt: -1, updatedAt: -1 });
