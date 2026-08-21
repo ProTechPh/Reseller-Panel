@@ -24,6 +24,8 @@ export async function GET() {
         username: user.username,
         role: user.role,
         balance: user.balance,
+        resellerType: user.resellerType || 'budget',
+        allowedProducts: user.allowedProducts || [],
       },
     });
   } catch (error) {

@@ -23,6 +23,7 @@ interface ProductType {
 export default function ResellerProducts() {
   const [products, setProducts] = useState<ProductType[]>([]);
   const [balance, setBalance] = useState(0);
+  const [resellerType, setResellerType] = useState<'budget' | 'unlimited'>('budget');
   const [stock, setStock] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
   
@@ -53,12 +54,18 @@ export default function ResellerProducts() {
 
       if (prodRes.ok) {
         const prodData = await prodRes.json();
-        if (prodData.success) setProducts(prodData.products);
+        if (prodData.success) {
+          setProducts(prodData.products);
+          if (prodData.resellerType) setResellerType(prodData.resellerType);
+        }
       }
 
       if (meRes.ok) {
         const meData = await meRes.json();
-        if (meData.success) setBalance(meData.user.balance);
+        if (meData.success) {
+          setBalance(meData.user.balance);
+          if (meData.user.resellerType) setResellerType(meData.user.resellerType);
+        }
       }
 
       if (stockRes.ok) {
@@ -190,7 +197,7 @@ export default function ResellerProducts() {
 
   const selectedPrice = getSelectedPrice();
   const remainingBalance = balance - selectedPrice;
-  const isBalanceSufficient = remainingBalance >= 0;
+  const isBalanceSufficient = resellerType === 'unlimited' ? true : remainingBalance >= 0;
   const currentItemStock = selectedProduct ? getStockCount(selectedProduct._id, selectedDuration) : 0;
   const isStockAvailable = currentItemStock > 0;
 
@@ -545,11 +552,13 @@ export default function ResellerProducts() {
                 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                     <span style={{ color: 'var(--text-secondary)' }}>Item Price:</span>
-                    <span style={{ fontWeight: 600 }}>₱{selectedPrice.toFixed(2)}</span>
+                    <span style={{ fontWeight: 600 }}>{resellerType === 'unlimited' ? '₱0.00 (Unlimited Tier)' : `₱${selectedPrice.toFixed(2)}`}</span>
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Your Current Balance:</span>
-                    <span style={{ fontWeight: 600 }}>₱{balance.toFixed(2)}</span>
+                    <span style={{ color: 'var(--text-secondary)' }}>Account Mode:</span>
+                    <span style={{ fontWeight: 600, color: resellerType === 'unlimited' ? 'var(--accent-orange)' : 'white' }}>
+                      {resellerType === 'unlimited' ? '∞ Unlimited Generation' : `₱${balance.toFixed(2)} Balance`}
+                    </span>
                   </div>
                   <div style={{
                     borderTop: '1px solid var(--border-color)',
@@ -560,7 +569,7 @@ export default function ResellerProducts() {
                   }}>
                     <span>Remaining Balance:</span>
                     <span style={{ color: isBalanceSufficient ? 'var(--accent-emerald)' : 'var(--accent-crimson)' }}>
-                      ₱{remainingBalance.toFixed(2)}
+                      {resellerType === 'unlimited' ? '∞ Unlimited' : `₱${remainingBalance.toFixed(2)}`}
                     </span>
                   </div>
                 </div>

@@ -29,7 +29,18 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Product ID and duration are required' }, { status: 400 });
     }
 
-    // 1. Fetch and validate product (outside transaction, read-only)
+    // 1. Check Product Locking / Allowed Products restriction
+    if (currentUser.allowedProducts && currentUser.allowedProducts.length > 0) {
+      const isAllowed = currentUser.allowedProducts.some((id: any) => id.toString() === productId);
+      if (!isAllowed) {
+        return NextResponse.json(
+          { error: 'This product is locked and not available for your reseller account.' },
+          { status: 403 }
+        );
+      }
+    }
+
+    // 2. Fetch and validate product (outside transaction, read-only)
     const product = await Product.findById(productId);
     if (!product || !product.isActive) {
       return NextResponse.json({ error: 'Product not found or inactive' }, { status: 404 });
@@ -41,8 +52,9 @@ export async function POST(req: Request) {
     }
 
     const price = priceOption.price;
+    const isUnlimited = currentUser.resellerType === 'unlimited';
 
-    // 2. Start a MongoDB transaction for atomic claim + balance deduction
+    // 3. Start a MongoDB transaction for atomic claim + balance deduction
     session = await mongoose.startSession();
     session.startTransaction();
 
@@ -71,70 +83,70 @@ export async function POST(req: Request) {
       {
         isSold: true,
         resellerId: authSession.userId,
-        price: price,
+        price: isUnlimited ? 0 : price,
         soldAt: new Date(),
       },
       { session }
     );
 
-    // Atomically check and deduct reseller balance
-    const updatedUser = await User.findOneAndUpdate(
-      {
-        _id: authSession.userId,
-        role: 'reseller',
-        balance: { $gte: price },
-      },
-      {
-        $inc: { balance: -price },
-      },
-      { session, new: true }
-    );
+    // Atomically check and deduct reseller balance (if Per Budget reseller tier)
+    let updatedUserBalance = currentUser.balance;
 
-    if (!updatedUser) {
-      await session.abortTransaction();
-      return NextResponse.json(
-        { error: 'Insufficient balance to purchase this license key.' },
-        { status: 400 }
+    if (!isUnlimited) {
+      const updatedUser = await User.findOneAndUpdate(
+        {
+          _id: authSession.userId,
+          role: 'reseller',
+          isBanned: { $ne: true },
+          balance: { $gte: price },
+        },
+        {
+          $inc: { balance: -price },
+        },
+        { session, new: true }
       );
+
+      if (!updatedUser) {
+        await session.abortTransaction();
+        return NextResponse.json(
+          { error: 'Insufficient balance to purchase this license key.' },
+          { status: 400 }
+        );
+      }
+      updatedUserBalance = updatedUser.balance;
     }
 
     // Create transaction log within the same transaction
     await Transaction.create(
       [
         {
-          userId: updatedUser._id,
+          userId: authSession.userId,
           type: 'purchase',
-          amount: price,
-          description: `Bought key for ${product.name} (${duration})`,
+          amount: isUnlimited ? 0 : price,
+          description: isUnlimited
+            ? `[Unlimited Tier] Claimed key for ${product.name} (${duration})`
+            : `Bought key for ${product.name} (${duration})`,
         },
       ],
       { session }
     );
 
-    // Commit the transaction — all three operations are atomic
+    // Commit transaction
     await session.commitTransaction();
+    session.endSession();
 
     return NextResponse.json({
       success: true,
-      licenseKey: {
-        id: keyItem._id.toString(),
-        key: keyItem.key,
-        productName: product.name,
-        duration: keyItem.duration,
-        price: price,
-        createdAt: new Date(),
-      },
-      newBalance: updatedUser.balance,
+      licenseKey: keyItem.key,
+      newBalance: updatedUserBalance,
+      resellerType: currentUser.resellerType || 'budget',
     });
   } catch (error: any) {
-    if (session && session.inTransaction()) {
-      await session.abortTransaction();
-    }
-    console.error('Purchase key error:', error);
-    return NextResponse.json({ error: error.message || 'Purchase failed' }, { status: 500 });
-  } finally {
     if (session) {
+      await session.abortTransaction();
       session.endSession();
     }
+    console.error('Purchase key error:', error);
+    return NextResponse.json({ error: error.message || 'Failed to process purchase' }, { status: 500 });
   }
 }

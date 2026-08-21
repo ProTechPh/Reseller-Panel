@@ -18,9 +18,18 @@ export async function GET() {
       return NextResponse.json({ error: 'Your account has been banned by the administrator.' }, { status: 403 });
     }
 
-    const products = await Product.find({ isActive: true }).sort({ name: 1 });
+    const query: any = { isActive: true };
+    if (currentUser.allowedProducts && currentUser.allowedProducts.length > 0) {
+      query._id = { $in: currentUser.allowedProducts };
+    }
 
-    return NextResponse.json({ success: true, products });
+    const products = await Product.find(query).sort({ name: 1 });
+
+    return NextResponse.json({
+      success: true,
+      products,
+      resellerType: currentUser.resellerType || 'budget',
+    });
   } catch (error: any) {
     console.error('Fetch reseller products error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

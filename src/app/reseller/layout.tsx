@@ -83,8 +83,10 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
         <div className="wallet-widget">
           <div className="wallet-icon"><Wallet size={16} /></div>
           <div className="wallet-details">
-            <span className="wallet-label">Your Balance</span>
-            <span className="wallet-value">₱{reseller?.balance?.toFixed(2)}</span>
+            <span className="wallet-label">{reseller?.resellerType === 'unlimited' ? 'Account Tier' : 'Your Balance'}</span>
+            <span className="wallet-value" style={{ color: reseller?.resellerType === 'unlimited' ? 'var(--accent-orange)' : 'var(--accent-emerald)' }}>
+              {reseller?.resellerType === 'unlimited' ? '∞ Unlimited' : `₱${(reseller?.balance || 0).toFixed(2)}`}
+            </span>
           </div>
         </div>
         <nav className="sidebar-nav">

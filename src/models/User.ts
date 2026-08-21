@@ -6,6 +6,8 @@ export interface IUser extends Document {
   role: 'admin' | 'reseller';
   balance: number;
   isBanned: boolean;
+  resellerType: 'budget' | 'unlimited';
+  allowedProducts: mongoose.Types.ObjectId[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -38,6 +40,17 @@ const UserSchema: Schema<IUser> = new Schema(
       type: Boolean,
       default: false,
     },
+    resellerType: {
+      type: String,
+      enum: ['budget', 'unlimited'],
+      default: 'budget',
+    },
+    allowedProducts: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'Product',
+      },
+    ],
   },
   { timestamps: true }
 );

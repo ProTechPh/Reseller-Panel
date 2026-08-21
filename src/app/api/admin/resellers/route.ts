@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
 import Transaction from '@/models/Transaction';
+import Product from '@/models/Product';
 import { getSessionUser, hashPassword } from '@/lib/auth';
 
 export async function GET() {
@@ -14,8 +15,12 @@ export async function GET() {
     await dbConnect();
     const LicenseKey = (await import('@/models/LicenseKey')).default;
 
-    // Find all users (admins and resellers)
-    const users = await User.find({}).select('-passwordHash').sort({ createdAt: -1 });
+    // Find all users (admins and resellers) with populated allowedProducts
+    const users = await User.find({})
+      .select('-passwordHash')
+      .populate('allowedProducts', 'name image')
+      .sort({ createdAt: -1 });
+
     const userIds = users.map(u => u._id);
 
     // Fetch all sold keys for sales breakdown
@@ -55,6 +60,8 @@ export async function GET() {
       return {
         ...uObj,
         isBanned: Boolean(u.isBanned),
+        resellerType: u.resellerType || 'budget',
+        allowedProducts: u.allowedProducts || [],
         totalPurchases: sales.totalPurchases,
         totalSpent: sales.totalSpent,
         purchases: sales.purchases,
@@ -81,7 +88,7 @@ export async function POST(req: Request) {
 
     // 1. Create User (Admin or Reseller)
     if (action === 'create') {
-      const { username, password, role = 'reseller', initialBalance = 0 } = body;
+      const { username, password, role = 'reseller', resellerType = 'budget', allowedProducts = [], initialBalance = 0 } = body;
 
       if (!username || !password) {
         return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
@@ -109,9 +116,11 @@ export async function POST(req: Request) {
         role,
         balance: balanceValue,
         isBanned: false,
+        resellerType: role === 'reseller' ? (resellerType === 'unlimited' ? 'unlimited' : 'budget') : 'budget',
+        allowedProducts: Array.isArray(allowedProducts) ? allowedProducts : [],
       });
 
-      if (role === 'reseller' && balanceValue > 0) {
+      if (role === 'reseller' && balanceValue > 0 && resellerType !== 'unlimited') {
         await Transaction.create({
           userId: newUser._id,
           type: 'balance_add',
@@ -128,12 +137,42 @@ export async function POST(req: Request) {
           role: newUser.role,
           balance: newUser.balance,
           isBanned: newUser.isBanned,
+          resellerType: newUser.resellerType,
+          allowedProducts: newUser.allowedProducts,
           createdAt: newUser.createdAt,
         },
       });
     }
 
-    // 2. Toggle Ban Status (Ban / Unban)
+    // 2. Update Reseller Settings (Reseller Type & Allowed Products)
+    if (action === 'update_reseller') {
+      const { userId, resellerType, allowedProducts } = body;
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      }
+
+      const updatedUser = await User.findByIdAndUpdate(
+        userId,
+        {
+          $set: {
+            resellerType: resellerType === 'unlimited' ? 'unlimited' : 'budget',
+            allowedProducts: Array.isArray(allowedProducts) ? allowedProducts : [],
+          },
+        },
+        { new: true }
+      ).populate('allowedProducts', 'name image');
+
+      if (!updatedUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        user: updatedUser,
+      });
+    }
+
+    // 3. Toggle Ban Status (Ban / Unban)
     if (action === 'toggle_ban') {
       const { userId } = body;
       if (!userId) {
@@ -164,7 +203,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3. Adjust Balance
+    // 4. Adjust Balance
     if (action === 'adjust_balance') {
       const { resellerId, type, amount, description } = body;
 
