@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { Plus, DollarSign, X, ShieldAlert, Sparkles, UserPlus, ShoppingBag, Search, Ban, CheckCircle, Trash2, ShieldCheck, UserCheck, Settings, Lock, Unlock, Infinity as InfinityIcon, Layers, Users, BarChart3, TrendingUp, Key, Calendar, Trophy } from 'lucide-react';
+import { Plus, DollarSign, X, ShieldAlert, Sparkles, UserPlus, ShoppingBag, Search, Ban, CheckCircle, Trash2, ShieldCheck, UserCheck, Settings, Lock, Unlock, Infinity as InfinityIcon, Layers, Users, BarChart3, TrendingUp, Key, Calendar, Clock, AlertTriangle } from 'lucide-react';
 import CopyButton from '@/components/CopyButton';
 import Modal from '@/components/Modal';
 
@@ -27,8 +27,10 @@ interface UserAccountType {
   role: 'admin' | 'reseller';
   balance: number;
   isBanned?: boolean;
+  isExpired?: boolean;
   resellerType?: 'budget' | 'unlimited';
   allowedProducts?: ProductType[];
+  expiresAt?: string | null;
   createdAt: string;
   totalPurchases?: number;
   totalSpent?: number;
@@ -53,6 +55,7 @@ export default function AdminResellers() {
   const [isSalesOpen, setIsSalesOpen] = useState(false);
   const [isAnalyticsOpen, setIsAnalyticsOpen] = useState(false);
   const [isEditSettingsOpen, setIsEditSettingsOpen] = useState(false);
+  const [isExtendPlanOpen, setIsExtendPlanOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserAccountType | null>(null);
   const [salesSearch, setSalesSearch] = useState('');
 
@@ -63,14 +66,24 @@ export default function AdminResellers() {
   const [createResellerType, setCreateResellerType] = useState<'budget' | 'unlimited'>('budget');
   const [createAllowedProducts, setCreateAllowedProducts] = useState<string[]>([]);
   const [createBalance, setCreateBalance] = useState('0');
+  const [createPlanOption, setCreatePlanOption] = useState<string>('1_month');
+  const [createCustomDate, setCreateCustomDate] = useState<string>('');
   const [createError, setCreateError] = useState<string | null>(null);
   const [createSubmitting, setCreateSubmitting] = useState(false);
 
   // Edit Settings Form State
   const [editResellerType, setEditResellerType] = useState<'budget' | 'unlimited'>('budget');
   const [editAllowedProducts, setEditAllowedProducts] = useState<string[]>([]);
+  const [editPlanOption, setEditPlanOption] = useState<string>('keep');
+  const [editCustomDate, setEditCustomDate] = useState<string>('');
   const [editError, setEditError] = useState<string | null>(null);
   const [editSubmitting, setEditSubmitting] = useState(false);
+
+  // Extend Plan Form State
+  const [extendOption, setExtendOption] = useState<string>('1_month');
+  const [extendCustomDate, setExtendCustomDate] = useState<string>('');
+  const [extendError, setExtendError] = useState<string | null>(null);
+  const [extendSubmitting, setExtendSubmitting] = useState(false);
 
   // Adjust Balance Form State
   const [adjustType, setAdjustType] = useState<'balance_add' | 'balance_deduct'>('balance_add');
@@ -119,6 +132,8 @@ export default function AdminResellers() {
     setCreateResellerType('budget');
     setCreateAllowedProducts([]);
     setCreateBalance('0');
+    setCreatePlanOption('1_month');
+    setCreateCustomDate('');
     setCreateError(null);
     setIsCreateOpen(true);
   };
@@ -127,8 +142,18 @@ export default function AdminResellers() {
     setSelectedUser(user);
     setEditResellerType(user.resellerType || 'budget');
     setEditAllowedProducts(user.allowedProducts ? user.allowedProducts.map(p => p._id) : []);
+    setEditPlanOption('keep');
+    setEditCustomDate('');
     setEditError(null);
     setIsEditSettingsOpen(true);
+  };
+
+  const openExtendPlanModal = (user: UserAccountType) => {
+    setSelectedUser(user);
+    setExtendOption('1_month');
+    setExtendCustomDate('');
+    setExtendError(null);
+    setIsExtendPlanOpen(true);
   };
 
   const openAdjustModal = (user: UserAccountType) => {
@@ -177,6 +202,10 @@ export default function AdminResellers() {
     if (!createPassword.trim() || createPassword.length < 5) {
       return setCreateError('Password must be at least 5 characters.');
     }
+
+    if (createPlanOption === 'custom' && !createCustomDate) {
+      return setCreateError('Please select a custom expiration date.');
+    }
     
     const balanceNum = parseFloat(createBalance);
     if (createRole === 'reseller' && createResellerType === 'budget' && (isNaN(balanceNum) || balanceNum < 0)) {
@@ -197,6 +226,8 @@ export default function AdminResellers() {
           resellerType: createResellerType,
           allowedProducts: createAllowedProducts,
           initialBalance: createRole === 'reseller' && createResellerType === 'budget' ? balanceNum : 0,
+          planOption: createPlanOption,
+          customExpiresAt: createPlanOption === 'custom' ? createCustomDate : null,
         }),
       });
 
@@ -219,19 +250,29 @@ export default function AdminResellers() {
     setEditError(null);
 
     if (!selectedUser) return;
+    if (editPlanOption === 'custom' && !editCustomDate) {
+      return setEditError('Please select a custom expiration date.');
+    }
 
     setEditSubmitting(true);
 
     try {
+      const payload: any = {
+        action: 'update_reseller',
+        userId: selectedUser._id,
+        resellerType: editResellerType,
+        allowedProducts: editAllowedProducts,
+      };
+
+      if (editPlanOption !== 'keep') {
+        payload.planOption = editPlanOption;
+        payload.customExpiresAt = editPlanOption === 'custom' ? editCustomDate : null;
+      }
+
       const res = await fetch('/api/admin/resellers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'update_reseller',
-          userId: selectedUser._id,
-          resellerType: editResellerType,
-          allowedProducts: editAllowedProducts,
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json();
@@ -245,6 +286,43 @@ export default function AdminResellers() {
       setEditError(err.message || 'An error occurred');
     } finally {
       setEditSubmitting(false);
+    }
+  };
+
+  const handleExtendPlanSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setExtendError(null);
+
+    if (!selectedUser) return;
+    if (extendOption === 'custom' && !extendCustomDate) {
+      return setExtendError('Please select a custom expiration date.');
+    }
+
+    setExtendSubmitting(true);
+
+    try {
+      const res = await fetch('/api/admin/resellers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          action: 'extend_plan',
+          userId: selectedUser._id,
+          planOption: extendOption,
+          customExpiresAt: extendOption === 'custom' ? extendCustomDate : null,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to extend account plan');
+      }
+
+      setIsExtendPlanOpen(false);
+      loadData();
+    } catch (err: any) {
+      setExtendError(err.message || 'An error occurred');
+    } finally {
+      setExtendSubmitting(false);
     }
   };
 
@@ -387,7 +465,7 @@ export default function AdminResellers() {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
         <div>
           <h1>User & Account Management</h1>
-          <p className="subtitle">Individual reseller analytics, Per-Budget vs Unlimited tracking, and product locking.</p>
+          <p className="subtitle">Individual reseller analytics, plan durations, extensions, Per-Budget vs Unlimited tracking.</p>
         </div>
         <button className="btn btn-primary" onClick={openCreateModal}>
           <UserPlus size={16} />
@@ -452,7 +530,7 @@ export default function AdminResellers() {
         </div>
       </div>
 
-      {/* Navigation Sub-Tabs Bar (Separated Sales Pages) */}
+      {/* Navigation Sub-Tabs Bar */}
       <div style={{
         display: 'flex',
         gap: '8px',
@@ -522,7 +600,7 @@ export default function AdminResellers() {
                   <th>Username</th>
                   <th>Role</th>
                   <th>Reseller Tier Mode</th>
-                  <th>Allowed / Locked Products</th>
+                  <th>Account Plan / Expiration</th>
                   <th>Status</th>
                   <th>Balance / Mode</th>
                   <th>Keys Bought</th>
@@ -534,10 +612,10 @@ export default function AdminResellers() {
                 {filteredUsers.map((user) => {
                   const isCurrentAdmin = user._id === currentAdminId;
                   const isUnlimited = user.resellerType === 'unlimited';
-                  const allowedList = user.allowedProducts || [];
+                  const isExpired = user.role === 'reseller' && user.expiresAt ? new Date() > new Date(user.expiresAt) : false;
 
                   return (
-                    <tr key={user._id} style={{ opacity: user.isBanned ? 0.65 : 1 }}>
+                    <tr key={user._id} style={{ opacity: user.isBanned || isExpired ? 0.65 : 1 }}>
                       <td style={{ fontWeight: 700 }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                           <span>{user.username}</span>
@@ -580,20 +658,21 @@ export default function AdminResellers() {
                       </td>
                       <td>
                         {user.role === 'reseller' ? (
-                          allowedList.length === 0 ? (
+                          !user.expiresAt ? (
                             <span className="badge badge-emerald">
-                              <Unlock size={11} style={{ marginRight: '4px' }} />
-                              All Products Unlocked
+                              <Sparkles size={11} style={{ marginRight: '4px' }} />
+                              Lifetime Plan
+                            </span>
+                          ) : isExpired ? (
+                            <span className="badge badge-crimson" style={{ fontWeight: 700 }}>
+                              <Clock size={11} style={{ marginRight: '4px' }} />
+                              Expired {new Date(user.expiresAt).toLocaleDateString()}
                             </span>
                           ) : (
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '4px', maxWidth: '240px' }}>
-                              {allowedList.map((p) => (
-                                <span key={p._id} className="badge badge-indigo" style={{ fontSize: '0.65rem', padding: '2px 6px' }}>
-                                  <Lock size={9} style={{ marginRight: '3px' }} />
-                                  {p.name}
-                                </span>
-                              ))}
-                            </div>
+                            <span className="badge badge-indigo">
+                              <Calendar size={11} style={{ marginRight: '4px' }} />
+                              Expires {new Date(user.expiresAt).toLocaleDateString()}
+                            </span>
                           )
                         ) : (
                           <span style={{ color: 'var(--text-muted)' }}>—</span>
@@ -604,6 +683,11 @@ export default function AdminResellers() {
                           <span className="badge badge-crimson">
                             <Ban size={11} style={{ marginRight: '3px' }} />
                             Banned
+                          </span>
+                        ) : isExpired ? (
+                          <span className="badge badge-crimson">
+                            <AlertTriangle size={11} style={{ marginRight: '3px' }} />
+                            Plan Expired
                           </span>
                         ) : (
                           <span className="badge badge-emerald">
@@ -644,6 +728,15 @@ export default function AdminResellers() {
                               <button
                                 className="btn btn-secondary"
                                 style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                                onClick={() => openExtendPlanModal(user)}
+                                title="Extend Account Plan Duration"
+                              >
+                                <Calendar size={13} style={{ color: 'var(--accent-emerald)' }} />
+                                Extend Plan
+                              </button>
+                              <button
+                                className="btn btn-secondary"
+                                style={{ padding: '6px 10px', fontSize: '0.8rem' }}
                                 onClick={() => openAnalyticsModal(user)}
                                 title="View Per-User Analytics"
                               >
@@ -656,7 +749,7 @@ export default function AdminResellers() {
                                 onClick={() => openEditSettingsModal(user)}
                                 title="Configure Reseller Mode & Product Locking">
                                 <Settings size={13} style={{ color: 'var(--accent-indigo)' }} />
-                                Tier & Locks
+                                Settings
                               </button>
                               <button 
                                 className="btn btn-secondary" 
@@ -712,6 +805,104 @@ export default function AdminResellers() {
         </div>
       )}
 
+      {/* Extend Account Plan Modal */}
+      <Modal isOpen={isExtendPlanOpen && !!selectedUser} onClose={() => setIsExtendPlanOpen(false)} maxWidth="500px">
+        {selectedUser && (
+          <>
+            <div className="modal-header">
+              <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Calendar size={18} color="var(--accent-emerald)" />
+                Extend Reseller Plan Duration
+              </h2>
+              <button onClick={() => setIsExtendPlanOpen(false)} className="modal-close">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div style={{
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--border-color)',
+              borderRadius: 'var(--radius-sm)',
+              padding: '12px 14px',
+              fontSize: '0.85rem',
+            }}>
+              <div>Reseller Account: <strong style={{ color: 'white' }}>{selectedUser.username}</strong></div>
+              <div style={{ marginTop: '4px' }}>
+                Current Status:{' '}
+                {selectedUser.expiresAt ? (
+                  new Date() > new Date(selectedUser.expiresAt) ? (
+                    <strong style={{ color: 'var(--accent-crimson)' }}>Expired on {new Date(selectedUser.expiresAt).toLocaleDateString()}</strong>
+                  ) : (
+                    <strong style={{ color: 'var(--accent-emerald)' }}>Active until {new Date(selectedUser.expiresAt).toLocaleDateString()}</strong>
+                  )
+                ) : (
+                  <strong style={{ color: 'var(--accent-indigo)' }}>Lifetime (No Expiry)</strong>
+                )}
+              </div>
+            </div>
+
+            {extendError && (
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                background: 'rgba(244, 63, 94, 0.06)',
+                border: '1px solid rgba(244, 63, 94, 0.15)',
+                color: 'var(--accent-crimson)',
+                padding: '10px 14px',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.8rem',
+              }}>
+                <ShieldAlert size={15} />
+                <span>{extendError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleExtendPlanSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="ext-opt">Select Extension Duration</label>
+                <select
+                  id="ext-opt"
+                  className="form-input"
+                  value={extendOption}
+                  onChange={(e) => setExtendOption(e.target.value)}
+                >
+                  <option value="1_month">+1 Month Plan Extension</option>
+                  <option value="3_months">+3 Months Plan Extension</option>
+                  <option value="6_months">+6 Months Plan Extension</option>
+                  <option value="1_year">+1 Year Plan Extension</option>
+                  <option value="custom">Set Specific Custom Expiration Date</option>
+                  <option value="lifetime">Set to Lifetime / Permanent (No Expiration)</option>
+                </select>
+              </div>
+
+              {extendOption === 'custom' && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="ext-date">Custom Expiration Date</label>
+                  <input
+                    id="ext-date"
+                    type="date"
+                    className="form-input"
+                    value={extendCustomDate}
+                    onChange={(e) => setExtendCustomDate(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setIsExtendPlanOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={extendSubmitting}>
+                  {extendSubmitting ? 'Extending...' : 'Apply Plan Extension'}
+                </button>
+              </div>
+            </form>
+          </>
+        )}
+      </Modal>
+
       {/* Per-User Analytics Modal */}
       <Modal isOpen={isAnalyticsOpen && !!selectedUser} onClose={() => setIsAnalyticsOpen(false)} maxWidth="800px">
         {selectedUser && (
@@ -748,6 +939,10 @@ export default function AdminResellers() {
                       <span className="badge badge-crimson" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
                         <Ban size={10} style={{ marginRight: '2px' }} /> Banned Account
                       </span>
+                    ) : selectedUser.expiresAt && new Date() > new Date(selectedUser.expiresAt) ? (
+                      <span className="badge badge-crimson" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
+                        <Clock size={10} style={{ marginRight: '2px' }} /> Plan Expired
+                      </span>
                     ) : (
                       <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '1px 6px' }}>
                         <CheckCircle size={10} style={{ marginRight: '2px' }} /> Active Account
@@ -782,9 +977,9 @@ export default function AdminResellers() {
               </div>
 
               <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '12px 14px' }}>
-                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Current Balance</span>
-                <div style={{ fontSize: '1.35rem', fontWeight: 800, color: 'var(--accent-emerald)', marginTop: '2px' }}>
-                  {selectedUser.resellerType === 'unlimited' ? '∞ Unlimited' : `₱${selectedUser.balance.toFixed(2)}`}
+                <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', fontWeight: 700, textTransform: 'uppercase' }}>Plan Expiration</span>
+                <div style={{ fontSize: '1rem', fontWeight: 800, color: selectedUser.expiresAt && new Date() > new Date(selectedUser.expiresAt) ? 'var(--accent-crimson)' : 'var(--accent-emerald)', marginTop: '4px' }}>
+                  {selectedUser.expiresAt ? new Date(selectedUser.expiresAt).toLocaleDateString() : 'Lifetime'}
                 </div>
               </div>
 
@@ -801,7 +996,7 @@ export default function AdminResellers() {
               {/* Product Breakdown */}
               <div style={{ background: 'rgba(255,255,255,0.01)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '14px' }}>
                 <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '12px' }}>
-                  <Trophy size={14} color="var(--accent-orange)" />
+                  <ShoppingBag size={14} color="var(--accent-orange)" />
                   Product Sales Breakdown
                 </span>
                 {sortedProductStats.length === 0 ? (
@@ -924,7 +1119,7 @@ export default function AdminResellers() {
             <div className="modal-header">
               <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <Settings size={18} color="var(--accent-indigo)" />
-                Configure Reseller Tier & Product Locks
+                Configure Reseller Settings & Plan
               </h2>
               <button onClick={() => setIsEditSettingsOpen(false)} className="modal-close">
                 <X size={18} />
@@ -1019,6 +1214,39 @@ export default function AdminResellers() {
                 </div>
               </div>
 
+              {/* Update Plan Expiration */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="edit-plan">Account Plan Expiration</label>
+                <select
+                  id="edit-plan"
+                  className="form-input"
+                  value={editPlanOption}
+                  onChange={(e) => setEditPlanOption(e.target.value)}
+                >
+                  <option value="keep">Keep Current Expiration Date ({selectedUser.expiresAt ? new Date(selectedUser.expiresAt).toLocaleDateString() : 'Lifetime'})</option>
+                  <option value="1_month">Extend +1 Month</option>
+                  <option value="3_months">Extend +3 Months</option>
+                  <option value="6_months">Extend +6 Months</option>
+                  <option value="1_year">Extend +1 Year</option>
+                  <option value="custom">Set Custom Expiration Date</option>
+                  <option value="lifetime">Set to Lifetime / Permanent (No Expiration)</option>
+                </select>
+              </div>
+
+              {editPlanOption === 'custom' && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="edit-date">Custom Date</label>
+                  <input
+                    id="edit-date"
+                    type="date"
+                    className="form-input"
+                    value={editCustomDate}
+                    onChange={(e) => setEditCustomDate(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
               {/* Product Access Locking */}
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" htmlFor="edit-prods">
@@ -1036,7 +1264,7 @@ export default function AdminResellers() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '8px',
-                  maxHeight: '180px',
+                  maxHeight: '160px',
                   overflowY: 'auto'
                 }}>
                   {products.length === 0 ? (
@@ -1192,6 +1420,38 @@ export default function AdminResellers() {
 
           {createRole === 'reseller' && (
             <>
+              {/* Account Plan Duration */}
+              <div className="form-group" style={{ marginBottom: 0 }}>
+                <label className="form-label" htmlFor="create-plan">Account Plan Expiration</label>
+                <select
+                  id="create-plan"
+                  className="form-input"
+                  value={createPlanOption}
+                  onChange={(e) => setCreatePlanOption(e.target.value)}
+                >
+                  <option value="1_month">1 Month Plan</option>
+                  <option value="3_months">3 Months Plan</option>
+                  <option value="6_months">6 Months Plan</option>
+                  <option value="1_year">1 Year Plan</option>
+                  <option value="custom">Custom Date Expiration</option>
+                  <option value="lifetime">Lifetime / No Expiration</option>
+                </select>
+              </div>
+
+              {createPlanOption === 'custom' && (
+                <div className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" htmlFor="create-date">Custom Expiration Date</label>
+                  <input
+                    id="create-date"
+                    type="date"
+                    className="form-input"
+                    value={createCustomDate}
+                    onChange={(e) => setCreateCustomDate(e.target.value)}
+                    required
+                  />
+                </div>
+              )}
+
               {/* Reseller Mode: Per Budget vs Unlimited */}
               <div className="form-group" style={{ marginBottom: 0 }}>
                 <label className="form-label" htmlFor="create-mode">Reseller Mode</label>
@@ -1272,7 +1532,7 @@ export default function AdminResellers() {
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '6px',
-                  maxHeight: '140px',
+                  maxHeight: '130px',
                   overflowY: 'auto'
                 }}>
                   {products.map((prod) => {

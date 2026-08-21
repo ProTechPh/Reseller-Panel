@@ -18,6 +18,11 @@ export async function GET() {
       return NextResponse.json({ error: 'Your account has been banned by the administrator.' }, { status: 403 });
     }
 
+    if (currentUser.expiresAt && new Date() > new Date(currentUser.expiresAt)) {
+      await clearSessionCookie();
+      return NextResponse.json({ error: 'Your reseller account plan has expired. Please contact administrator to extend.' }, { status: 403 });
+    }
+
     const query: any = { isActive: true };
     if (currentUser.allowedProducts && currentUser.allowedProducts.length > 0) {
       query._id = { $in: currentUser.allowedProducts };
@@ -29,6 +34,7 @@ export async function GET() {
       success: true,
       products,
       resellerType: currentUser.resellerType || 'budget',
+      expiresAt: currentUser.expiresAt || null,
     });
   } catch (error: any) {
     console.error('Fetch reseller products error:', error);

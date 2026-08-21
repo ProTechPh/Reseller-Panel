@@ -2,8 +2,38 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
 import Transaction from '@/models/Transaction';
-import Product from '@/models/Product';
 import { getSessionUser, hashPassword } from '@/lib/auth';
+
+function computeExpiresAt(planOption: string, customExpiresAt?: string | null, baseDate?: Date | null): Date | null {
+  if (!planOption || planOption === 'lifetime') return null;
+  
+  if (planOption === 'custom' && customExpiresAt) {
+    const d = new Date(customExpiresAt);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  const start = (baseDate && new Date(baseDate) > new Date()) ? new Date(baseDate) : new Date();
+  const result = new Date(start);
+
+  if (planOption === '1_month') {
+    result.setMonth(result.getMonth() + 1);
+    return result;
+  }
+  if (planOption === '3_months') {
+    result.setMonth(result.getMonth() + 3);
+    return result;
+  }
+  if (planOption === '6_months') {
+    result.setMonth(result.getMonth() + 6);
+    return result;
+  }
+  if (planOption === '1_year') {
+    result.setFullYear(result.getFullYear() + 1);
+    return result;
+  }
+
+  return null;
+}
 
 export async function GET() {
   try {
@@ -13,9 +43,8 @@ export async function GET() {
     }
 
     await dbConnect();
-    // Ensure Product and LicenseKey models are registered before populate
-    const ProductModel = (await import('@/models/Product')).default;
     const LicenseKeyModel = (await import('@/models/LicenseKey')).default;
+    const ProductModel = (await import('@/models/Product')).default;
 
     // Find all users (admins and resellers) with populated allowedProducts
     const users = await User.find({})
@@ -59,11 +88,15 @@ export async function GET() {
     const usersWithSales = users.map((u) => {
       const uObj = u.toObject();
       const sales = salesByUser[u._id.toString()] || { totalPurchases: 0, totalSpent: 0, purchases: [] };
+      const isExpired = u.role === 'reseller' && u.expiresAt ? new Date() > new Date(u.expiresAt) : false;
+
       return {
         ...uObj,
         isBanned: Boolean(u.isBanned),
+        isExpired,
         resellerType: u.resellerType || 'budget',
         allowedProducts: u.allowedProducts || [],
+        expiresAt: u.expiresAt || null,
         totalPurchases: sales.totalPurchases,
         totalSpent: sales.totalSpent,
         purchases: sales.purchases,
@@ -90,7 +123,16 @@ export async function POST(req: Request) {
 
     // 1. Create User (Admin or Reseller)
     if (action === 'create') {
-      const { username, password, role = 'reseller', resellerType = 'budget', allowedProducts = [], initialBalance = 0 } = body;
+      const {
+        username,
+        password,
+        role = 'reseller',
+        resellerType = 'budget',
+        allowedProducts = [],
+        initialBalance = 0,
+        planOption = 'lifetime',
+        customExpiresAt = null,
+      } = body;
 
       if (!username || !password) {
         return NextResponse.json({ error: 'Username and password are required' }, { status: 400 });
@@ -112,6 +154,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: 'Initial balance cannot be negative' }, { status: 400 });
       }
 
+      const calculatedExpiresAt = role === 'reseller' ? computeExpiresAt(planOption, customExpiresAt) : null;
+
       const newUser = await User.create({
         username: username.toLowerCase().trim(),
         passwordHash,
@@ -120,6 +164,7 @@ export async function POST(req: Request) {
         isBanned: false,
         resellerType: role === 'reseller' ? (resellerType === 'unlimited' ? 'unlimited' : 'budget') : 'budget',
         allowedProducts: Array.isArray(allowedProducts) ? allowedProducts : [],
+        expiresAt: calculatedExpiresAt,
       });
 
       if (role === 'reseller' && balanceValue > 0 && resellerType !== 'unlimited') {
@@ -141,16 +186,27 @@ export async function POST(req: Request) {
           isBanned: newUser.isBanned,
           resellerType: newUser.resellerType,
           allowedProducts: newUser.allowedProducts,
+          expiresAt: newUser.expiresAt,
           createdAt: newUser.createdAt,
         },
       });
     }
 
-    // 2. Update Reseller Settings (Reseller Type & Allowed Products)
+    // 2. Update Reseller Settings (Reseller Type, Allowed Products, & Plan Expiration)
     if (action === 'update_reseller') {
-      const { userId, resellerType, allowedProducts } = body;
+      const { userId, resellerType, allowedProducts, planOption, customExpiresAt } = body;
       if (!userId) {
         return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      }
+
+      const existingUser = await User.findById(userId);
+      if (!existingUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      let nextExpiresAt = existingUser.expiresAt;
+      if (planOption !== undefined) {
+        nextExpiresAt = computeExpiresAt(planOption, customExpiresAt, existingUser.expiresAt);
       }
 
       const updatedUser = await User.findByIdAndUpdate(
@@ -159,14 +215,11 @@ export async function POST(req: Request) {
           $set: {
             resellerType: resellerType === 'unlimited' ? 'unlimited' : 'budget',
             allowedProducts: Array.isArray(allowedProducts) ? allowedProducts : [],
+            expiresAt: nextExpiresAt,
           },
         },
         { new: true }
       ).populate('allowedProducts', 'name image');
-
-      if (!updatedUser) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 });
-      }
 
       return NextResponse.json({
         success: true,
@@ -174,7 +227,33 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3. Toggle Ban Status (Ban / Unban)
+    // 3. Extend Reseller Account Plan (+1 Month, +3 Months, +6 Months, +1 Year)
+    if (action === 'extend_plan') {
+      const { userId, planOption = '1_month', customExpiresAt } = body;
+      if (!userId) {
+        return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+      }
+
+      const targetUser = await User.findById(userId);
+      if (!targetUser) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 });
+      }
+
+      const newExpiresAt = computeExpiresAt(planOption, customExpiresAt, targetUser.expiresAt);
+
+      targetUser.expiresAt = newExpiresAt;
+      await targetUser.save();
+
+      return NextResponse.json({
+        success: true,
+        expiresAt: targetUser.expiresAt,
+        message: targetUser.expiresAt
+          ? `Reseller plan extended until ${new Date(targetUser.expiresAt).toLocaleDateString()}.`
+          : 'Reseller plan set to Lifetime (No expiration).',
+      });
+    }
+
+    // 4. Toggle Ban Status (Ban / Unban)
     if (action === 'toggle_ban') {
       const { userId } = body;
       if (!userId) {
@@ -205,7 +284,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4. Adjust Balance
+    // 5. Adjust Balance
     if (action === 'adjust_balance') {
       const { resellerId, type, amount, description } = body;
 

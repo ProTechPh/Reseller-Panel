@@ -30,6 +30,13 @@ export async function POST(req: Request) {
       );
     }
 
+    if (user.role === 'reseller' && user.expiresAt && new Date() > new Date(user.expiresAt)) {
+      return NextResponse.json(
+        { error: `Your reseller account plan expired on ${new Date(user.expiresAt).toLocaleDateString()}. Please contact the administrator to extend your plan.` },
+        { status: 403 }
+      );
+    }
+
     const isMatch = await comparePassword(password, user.passwordHash);
     if (!isMatch) {
       return NextResponse.json(
@@ -51,6 +58,7 @@ export async function POST(req: Request) {
         username: user.username,
         role: user.role,
         balance: user.balance,
+        expiresAt: user.expiresAt,
       },
     });
   } catch (error: any) {

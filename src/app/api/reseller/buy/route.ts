@@ -23,6 +23,13 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Your account has been banned by the administrator.' }, { status: 403 });
     }
 
+    if (currentUser.expiresAt && new Date() > new Date(currentUser.expiresAt)) {
+      return NextResponse.json(
+        { error: 'Your reseller account plan has expired. Please contact administrator to extend.' },
+        { status: 403 }
+      );
+    }
+
     const { productId, duration } = await req.json();
 
     if (!productId || !duration) {

@@ -17,6 +17,11 @@ export async function GET() {
       return NextResponse.json({ error: 'User not found or account banned' }, { status: 401 });
     }
 
+    if (user.role === 'reseller' && user.expiresAt && new Date() > new Date(user.expiresAt)) {
+      await clearSessionCookie();
+      return NextResponse.json({ error: 'Your reseller account plan has expired. Contact administrator to extend.' }, { status: 401 });
+    }
+
     return NextResponse.json({
       success: true,
       user: {
@@ -26,6 +31,7 @@ export async function GET() {
         balance: user.balance,
         resellerType: user.resellerType || 'budget',
         allowedProducts: user.allowedProducts || [],
+        expiresAt: user.expiresAt || null,
       },
     });
   } catch (error) {

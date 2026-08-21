@@ -8,6 +8,7 @@ export interface IUser extends Document {
   isBanned: boolean;
   resellerType: 'budget' | 'unlimited';
   allowedProducts: mongoose.Types.ObjectId[];
+  expiresAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,6 +52,10 @@ const UserSchema: Schema<IUser> = new Schema(
         ref: 'Product',
       },
     ],
+    expiresAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
