@@ -14,8 +14,13 @@ export async function GET() {
 
     await dbConnect();
 
+    // Ensure Mongoose models are explicitly initialized and registered before populate
+    const ProductModel = Product;
+    const UserModel = User;
+    const KeyModel = LicenseKey;
+
     // Fetch all keys, populating product and reseller info
-    const keys = await LicenseKey.find({})
+    const keys = await KeyModel.find({})
       .populate('productId', 'name')
       .populate('resellerId', 'username')
       .sort({ createdAt: -1 });

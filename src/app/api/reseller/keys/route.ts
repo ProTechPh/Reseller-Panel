@@ -13,13 +13,19 @@ export async function GET() {
     }
 
     await dbConnect();
-    const currentUser = await User.findById(session.userId);
+
+    // Ensure Mongoose models are explicitly initialized and registered before populate
+    const ProductModel = Product;
+    const UserModel = User;
+    const KeyModel = LicenseKey;
+
+    const currentUser = await UserModel.findById(session.userId);
     if (!currentUser || currentUser.isBanned) {
       await clearSessionCookie();
       return NextResponse.json({ error: 'Your account has been banned by the administrator.' }, { status: 403 });
     }
 
-    const keys = await LicenseKey.find({ resellerId: session.userId })
+    const keys = await KeyModel.find({ resellerId: session.userId })
       .populate('productId', 'name')
       .sort({ createdAt: -1 });
 

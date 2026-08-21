@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/dbConnect';
 import User from '@/models/User';
 import LicenseKey from '@/models/LicenseKey';
+import Product from '@/models/Product';
 import { getSessionUser } from '@/lib/auth';
 
 export async function GET() {
@@ -13,11 +14,16 @@ export async function GET() {
 
     await dbConnect();
 
+    // Ensure Mongoose models are explicitly initialized and registered before populate
+    const ProductModel = Product;
+    const UserModel = User;
+    const KeyModel = LicenseKey;
+
     // 1. Total resellers count (indexed query)
-    const totalResellers = await User.countDocuments({ role: 'reseller' });
+    const totalResellers = await UserModel.countDocuments({ role: 'reseller' });
 
     // 2. Aggregate stats in a single DB round-trip instead of fetching all keys
-    const [aggResult] = await LicenseKey.aggregate([
+    const [aggResult] = await KeyModel.aggregate([
       {
         $group: {
           _id: null,
@@ -31,7 +37,7 @@ export async function GET() {
     const totalRevenue = aggResult?.totalRevenue || 0;
 
     // 3. Get recent keys sold (last 10) - uses indexes
-    const recentKeys = await LicenseKey.find({})
+    const recentKeys = await KeyModel.find({})
       .populate('productId', 'name')
       .populate('resellerId', 'username')
       .sort({ createdAt: -1 })
