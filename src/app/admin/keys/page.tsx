@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText, Search, Key, ShoppingBag, Box } from 'lucide-react';
+import { Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText, Search, Key, ShoppingBag, Box, Trash } from 'lucide-react';
 import Modal from '@/components/Modal';
 import CopyButton from '@/components/CopyButton';
 
@@ -46,6 +46,12 @@ export default function AdminKeys() {
   const [productFilter, setProductFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
+  // Bulk Delete State
+  const [bulkDeleteProductId, setBulkDeleteProductId] = useState('');
+  const [bulkDeleteDuration, setBulkDeleteDuration] = useState('');
+  const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
+  const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
+
   const loadData = async () => {
     try {
       setLoading(true);
@@ -89,6 +95,20 @@ export default function AdminKeys() {
       setSelectedDuration('');
     }
   }, [selectedProductId, products]);
+
+  // Auto-select first duration for bulk delete product
+  useEffect(() => {
+    if (bulkDeleteProductId) {
+      const prod = products.find((p) => p._id === bulkDeleteProductId);
+      if (prod && prod.prices.length > 0) {
+        setBulkDeleteDuration(prod.prices[0].duration);
+      } else {
+        setBulkDeleteDuration('');
+      }
+    } else {
+      setBulkDeleteDuration('');
+    }
+  }, [bulkDeleteProductId, products]);
 
   const openStockModal = () => {
     setSelectedProductId(products[0]?._id || '');
@@ -161,6 +181,40 @@ export default function AdminKeys() {
       loadData();
     } catch (err: any) {
       alert(err.message || 'Failed to delete key');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (!bulkDeleteProductId || !bulkDeleteDuration) return;
+
+    const product = products.find((p) => p._id === bulkDeleteProductId);
+    const matchingCount = keys.filter(
+      (k) => k.productId?._id === bulkDeleteProductId && k.duration === bulkDeleteDuration && !k.isSold
+    ).length;
+
+    if (matchingCount === 0) {
+      alert('No available keys found for this product and duration.');
+      return;
+    }
+
+    if (!confirm(`Are you sure you want to DELETE ALL ${matchingCount} available key(s) for "${product?.name}" (${bulkDeleteDuration})? This action cannot be undone.`)) {
+      return;
+    }
+
+    setBulkDeleteLoading(true);
+    try {
+      const params = new URLSearchParams({ productId: bulkDeleteProductId, duration: bulkDeleteDuration, type: 'available' });
+      const res = await fetch(`/api/admin/keys/bulk?${params}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to bulk delete keys');
+      alert(data.message || `Successfully deleted ${data.deletedCount} keys.`);
+      setBulkDeleteProductId('');
+      setBulkDeleteDuration('');
+      loadData();
+    } catch (err: any) {
+      alert(err.message || 'Failed to delete keys');
+    } finally {
+      setBulkDeleteLoading(false);
     }
   };
 
@@ -240,6 +294,59 @@ export default function AdminKeys() {
               {totalInventoryCount} Keys
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Bulk Delete Section */}
+      <div className="card" style={{ padding: '18px 22px', marginBottom: '24px', background: 'rgba(244, 63, 94, 0.04)', border: '1px solid rgba(244, 63, 94, 0.15)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '14px' }}>
+          <div style={{ width: '32px', height: '32px', borderRadius: 'var(--radius-sm)', background: 'rgba(244, 63, 94, 0.12)', border: '1px solid rgba(244, 63, 94, 0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--accent-crimson)' }}>
+            <Trash size={16} />
+          </div>
+          <div>
+            <h3 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Bulk Delete Keys</h3>
+            <p style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', margin: 0 }}>Delete all available (unsold) keys by product and duration</p>
+          </div>
+        </div>
+        <div style={{ display: 'flex', gap: '14px', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+          <div style={{ minWidth: '180px', flex: 1 }}>
+            <label className="form-label" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Product</label>
+            <select
+              className="form-input"
+              value={bulkDeleteProductId}
+              onChange={(e) => setBulkDeleteProductId(e.target.value)}
+              style={{ background: 'var(--bg-sidebar)' }}
+            >
+              <option value="">Select product...</option>
+              {products.map((p) => (
+                <option key={p._id} value={p._id}>{p.name}</option>
+              ))}
+            </select>
+          </div>
+          <div style={{ minWidth: '160px', flex: 1 }}>
+            <label className="form-label" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Duration</label>
+            <select
+              className="form-input"
+              value={bulkDeleteDuration}
+              onChange={(e) => setBulkDeleteDuration(e.target.value)}
+              style={{ background: 'var(--bg-sidebar)' }}
+              disabled={!bulkDeleteProductId}
+            >
+              <option value="">Select duration...</option>
+              {products.find((p) => p._id === bulkDeleteProductId)?.prices.map((p) => (
+                <option key={p.duration} value={p.duration}>{p.duration}</option>
+              ))}
+            </select>
+          </div>
+          <button
+            className="btn btn-danger"
+            onClick={handleBulkDelete}
+            disabled={!bulkDeleteProductId || !bulkDeleteDuration || bulkDeleteLoading}
+            style={{ padding: '8px 16px', border: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <Trash size={14} />
+            {bulkDeleteLoading ? 'Deleting...' : 'Delete All'}
+          </button>
         </div>
       </div>
 
