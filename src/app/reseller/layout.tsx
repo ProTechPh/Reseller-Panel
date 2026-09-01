@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, ShoppingCart, Key, Receipt, LogOut, Wallet, Menu } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Key, Receipt, LogOut, Wallet, Menu, Send } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 export default function ResellerLayout({ children }: { children: React.ReactNode }) {
@@ -100,6 +100,36 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
             );
           })}
         </nav>
+
+        {/* Telegram Direct Support Box */}
+        <div style={{ padding: '0 12px', marginBottom: '8px' }}>
+          <a
+            href="https://t.me/Sylvieofficeal"
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              padding: '10px 12px',
+              borderRadius: 'var(--radius-sm)',
+              background: 'rgba(34, 158, 217, 0.08)',
+              border: '1px solid rgba(34, 158, 217, 0.2)',
+              color: '#29b6f6',
+              textDecoration: 'none',
+              fontSize: '0.8rem',
+              fontWeight: 600,
+              transition: 'var(--transition)',
+            }}
+          >
+            <Send size={15} />
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <span style={{ fontSize: '0.68rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Telegram Support</span>
+              <span style={{ fontSize: '0.82rem', fontWeight: 700 }}>@Sylvieofficeal</span>
+            </div>
+          </a>
+        </div>
+
         <div className="sidebar-footer">
           <div className="user-profile">
             <div className="profile-avatar">{reseller?.username?.charAt(0).toUpperCase()}</div>

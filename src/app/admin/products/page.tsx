@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Edit2, Trash2, X, PlusCircle, MinusCircle, AlertCircle, KeyRound, Key, Search, ShoppingBag } from 'lucide-react';
+import { Plus, Edit2, Trash2, X, PlusCircle, MinusCircle, AlertCircle, KeyRound, Key, Search, ShoppingBag, Send, Zap } from 'lucide-react';
 import Modal from '@/components/Modal';
 import CopyButton from '@/components/CopyButton';
 
@@ -17,6 +17,8 @@ interface ProductType {
   image?: string;
   prices: PriceOption[];
   isActive: boolean;
+  deliveryType?: 'instant' | 'telegram';
+  telegramUsername?: string;
 }
 
 interface KeyType {
@@ -56,6 +58,8 @@ export default function AdminProducts() {
   const [prices, setPrices] = useState<PriceOption[]>([{ duration: '30 Days', price: 10 }]);
   const [image, setImage] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [deliveryType, setDeliveryType] = useState<'instant' | 'telegram'>('instant');
+  const [telegramUsername, setTelegramUsername] = useState('Sylvieofficeal');
   const [formError, setFormError] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
 
@@ -96,6 +100,8 @@ export default function AdminProducts() {
     setPrices([{ duration: '30 Days', price: 10 }]);
     setImage('');
     setIsActive(true);
+    setDeliveryType('instant');
+    setTelegramUsername('Sylvieofficeal');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -108,6 +114,8 @@ export default function AdminProducts() {
     setPrices(prod.prices.length > 0 ? prod.prices : [{ duration: '30 Days', price: 10 }]);
     setImage(prod.image || '');
     setIsActive(prod.isActive);
+    setDeliveryType(prod.deliveryType || 'instant');
+    setTelegramUsername(prod.telegramUsername || 'Sylvieofficeal');
     setFormError(null);
     setIsModalOpen(true);
   };
@@ -150,7 +158,15 @@ export default function AdminProducts() {
     setFormSubmitting(true);
 
     try {
-      const payload = { name, description, prices, image, isActive };
+      const payload = {
+        name,
+        description,
+        prices,
+        image,
+        isActive,
+        deliveryType,
+        telegramUsername: telegramUsername.trim().replace(/^@/, '') || 'Sylvieofficeal',
+      };
       const url = modalMode === 'create' ? '/api/admin/products' : `/api/admin/products?id=${currentId}`;
       const method = modalMode === 'create' ? 'POST' : 'PUT';
 
@@ -246,7 +262,7 @@ export default function AdminProducts() {
                   <th>Product Name</th>
                   <th>Description</th>
                   <th>Pricing Options</th>
-                  <th>Available Stock</th>
+                  <th>Available Stock / Method</th>
                   <th>Status</th>
                   <th style={{ textAlign: 'right' }}>Actions</th>
                 </tr>
@@ -254,10 +270,26 @@ export default function AdminProducts() {
               <tbody>
                 {products.map((prod) => {
                   const stockCount = getProductStockCount(prod._id);
+                  const isTg = prod.deliveryType === 'telegram';
                   return (
                     <tr key={prod._id}>
-                      <td style={{ fontWeight: 700 }}>{prod.name}</td>
-                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '280px' }}>
+                      <td style={{ fontWeight: 700 }}>
+                        <div>{prod.name}</div>
+                        <div style={{ marginTop: '4px' }}>
+                          {isTg ? (
+                            <span className="badge badge-yellow" style={{ fontSize: '0.65rem', background: 'rgba(34, 158, 217, 0.15)', color: '#29b6f6', border: '1px solid rgba(34, 158, 217, 0.3)' }}>
+                              <Send size={9} style={{ marginRight: '3px' }} />
+                              TG: @{prod.telegramUsername || 'Sylvieofficeal'}
+                            </span>
+                          ) : (
+                            <span className="badge badge-indigo" style={{ fontSize: '0.65rem' }}>
+                              <Zap size={9} style={{ marginRight: '3px' }} />
+                              Instant Key
+                            </span>
+                          )}
+                        </div>
+                      </td>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', maxWidth: '260px' }}>
                         {prod.description}
                       </td>
                       <td>
@@ -270,10 +302,17 @@ export default function AdminProducts() {
                         </div>
                       </td>
                       <td>
-                        <span className={stockCount > 0 ? "badge badge-emerald" : "badge badge-crimson"} style={{ fontWeight: 700 }}>
-                          <Key size={11} style={{ marginRight: '4px' }} />
-                          {stockCount} Available
-                        </span>
+                        {isTg ? (
+                          <span className="badge badge-yellow" style={{ fontWeight: 600, background: 'rgba(34, 158, 217, 0.12)', color: '#29b6f6', border: '1px solid rgba(34, 158, 217, 0.25)' }}>
+                            <Send size={11} style={{ marginRight: '4px' }} />
+                            Telegram DM
+                          </span>
+                        ) : (
+                          <span className={stockCount > 0 ? "badge badge-emerald" : "badge badge-crimson"} style={{ fontWeight: 700 }}>
+                            <Key size={11} style={{ marginRight: '4px' }} />
+                            {stockCount} Available
+                          </span>
+                        )}
                       </td>
                       <td>
                         {prod.isActive ? (
@@ -284,14 +323,16 @@ export default function AdminProducts() {
                       </td>
                       <td style={{ textAlign: 'right' }}>
                         <div style={{ display: 'inline-flex', gap: '6px' }}>
-                          <button
-                            className="btn btn-secondary"
-                            style={{ padding: '6px 10px', fontSize: '0.8rem' }}
-                            onClick={() => openStockViewModal(prod)}
-                            title="View Stocked Keys">
-                            <KeyRound size={13} style={{ color: 'var(--accent-orange)' }} />
-                            View Keys
-                          </button>
+                          {!isTg && (
+                            <button
+                              className="btn btn-secondary"
+                              style={{ padding: '6px 10px', fontSize: '0.8rem' }}
+                              onClick={() => openStockViewModal(prod)}
+                              title="View Stocked Keys">
+                              <KeyRound size={13} style={{ color: 'var(--accent-orange)' }} />
+                              View Keys
+                            </button>
+                          )}
                           <button 
                             className="btn btn-secondary" 
                             style={{ padding: '6px 10px' }} 
@@ -484,6 +525,81 @@ export default function AdminProducts() {
               value={image}
               onChange={(e) => setImage(e.target.value)}
             />
+          </div>
+
+          {/* Delivery Method Selection */}
+          <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '14px', background: 'rgba(255,255,255,0.01)' }}>
+            <label className="form-label" style={{ marginBottom: '8px' }}>Delivery Method</label>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: deliveryType === 'telegram' ? '12px' : '0' }}>
+              <button
+                type="button"
+                onClick={() => setDeliveryType('instant')}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: deliveryType === 'instant' ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)',
+                  background: deliveryType === 'instant' ? 'rgba(255, 94, 0, 0.1)' : 'transparent',
+                  color: deliveryType === 'instant' ? 'var(--accent-orange)' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'var(--transition)',
+                }}
+              >
+                <Zap size={14} />
+                Instant Key Stock
+              </button>
+              <button
+                type="button"
+                onClick={() => setDeliveryType('telegram')}
+                style={{
+                  padding: '10px 12px',
+                  borderRadius: 'var(--radius-sm)',
+                  border: deliveryType === 'telegram' ? '1px solid #0088cc' : '1px solid var(--border-color)',
+                  background: deliveryType === 'telegram' ? 'rgba(0, 136, 204, 0.15)' : 'transparent',
+                  color: deliveryType === 'telegram' ? '#29b6f6' : 'var(--text-secondary)',
+                  cursor: 'pointer',
+                  fontSize: '0.8rem',
+                  fontWeight: 600,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  transition: 'var(--transition)',
+                }}
+              >
+                <Send size={14} />
+                Telegram DM
+              </button>
+            </div>
+
+            {deliveryType === 'telegram' && (
+              <div>
+                <label className="form-label" htmlFor="prod-tg" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', marginBottom: '4px' }}>
+                  Telegram Username / Admin Contact
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', position: 'relative' }}>
+                  <span style={{ position: 'absolute', left: '12px', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>@</span>
+                  <input
+                    id="prod-tg"
+                    type="text"
+                    className="form-input"
+                    placeholder="Sylvieofficeal"
+                    value={telegramUsername}
+                    onChange={(e) => setTelegramUsername(e.target.value.replace(/^@/, ''))}
+                    style={{ paddingLeft: '28px', fontSize: '0.85rem' }}
+                    required={deliveryType === 'telegram'}
+                  />
+                </div>
+                <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)', marginTop: '4px', display: 'block' }}>
+                  Resellers will be directed to message <strong>@{telegramUsername.replace(/^@/, '') || 'Sylvieofficeal'}</strong> on Telegram for key delivery.
+                </span>
+              </div>
+            )}
           </div>
 
           <div style={{ border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)', padding: '14px', background: 'rgba(255,255,255,0.01)' }}>

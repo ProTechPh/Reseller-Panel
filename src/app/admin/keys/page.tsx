@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText, Search, Key, ShoppingBag, Box, Trash } from 'lucide-react';
+import { Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText, Search, Key, ShoppingBag, Box, Trash, Sparkles, Copy, RefreshCw } from 'lucide-react';
 import Modal from '@/components/Modal';
 import CopyButton from '@/components/CopyButton';
 
@@ -40,6 +40,14 @@ export default function AdminKeys() {
   const [formError, setFormError] = useState<string | null>(null);
   const [formSuccess, setFormSuccess] = useState<string | null>(null);
   const [formSubmitting, setFormSubmitting] = useState(false);
+
+  // Generator State
+  const [inputMode, setInputMode] = useState<'manual' | 'generate'>('manual');
+  const [genPrefix, setGenPrefix] = useState('');
+  const [genQuantity, setGenQuantity] = useState(10);
+  const [genLength, setGenLength] = useState(8);
+  const [genFormat, setGenFormat] = useState<'alphanumeric_upper' | 'alphanumeric_lower' | 'mixed' | 'numbers' | 'segmented'>('alphanumeric_upper');
+  const [copiedAll, setCopiedAll] = useState(false);
 
   // Filter State
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'sold'>('all');
@@ -110,11 +118,99 @@ export default function AdminKeys() {
     }
   }, [bulkDeleteProductId, products]);
 
+  const getSuggestedPrefix = (prodId: string, dur: string) => {
+    const prod = products.find((p) => p._id === prodId);
+    if (!prod) return '';
+    const cleanProd = prod.name
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '-')
+      .replace(/-+/g, '-')
+      .replace(/^-|-$/g, '');
+    const cleanDur = dur
+      .toLowerCase()
+      .replace(/\s*days?/gi, 'd')
+      .replace(/\s*hours?/gi, 'h')
+      .replace(/\s*weeks?/gi, 'w')
+      .replace(/\s*months?/gi, 'm')
+      .replace(/[^a-z0-9]/g, '');
+    return `${cleanProd}-${cleanDur}-`;
+  };
+
+  const handleAutoSuggestPrefix = () => {
+    const suggested = getSuggestedPrefix(selectedProductId, selectedDuration);
+    if (suggested) {
+      setGenPrefix(suggested);
+    }
+  };
+
+  const handleGenerateKeys = (append = false) => {
+    const count = Math.min(Math.max(1, Number(genQuantity) || 1), 500);
+    const prefix = genPrefix || '';
+
+    const upperChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    const lowerChars = 'abcdefghijkmnopqrstuvwxyz23456789';
+    const mixedChars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    const numChars = '0123456789';
+    const segChars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+
+    const existingKeys = rawKeysInput
+      .split(/[\n,]/)
+      .map((k) => k.trim())
+      .filter(Boolean);
+    const existingSet = new Set(append ? existingKeys : []);
+
+    const generated: string[] = [];
+    let attempts = 0;
+
+    while (generated.length < count && attempts < count * 25) {
+      attempts++;
+      let randStr = '';
+
+      if (genFormat === 'segmented') {
+        const p1 = Array.from({ length: 4 }, () => segChars.charAt(Math.floor(Math.random() * segChars.length))).join('');
+        const p2 = Array.from({ length: 4 }, () => segChars.charAt(Math.floor(Math.random() * segChars.length))).join('');
+        randStr = `${p1}-${p2}`;
+      } else if (genFormat === 'alphanumeric_lower') {
+        randStr = Array.from({ length: genLength }, () => lowerChars.charAt(Math.floor(Math.random() * lowerChars.length))).join('');
+      } else if (genFormat === 'mixed') {
+        randStr = Array.from({ length: genLength }, () => mixedChars.charAt(Math.floor(Math.random() * mixedChars.length))).join('');
+      } else if (genFormat === 'numbers') {
+        randStr = Array.from({ length: genLength }, () => numChars.charAt(Math.floor(Math.random() * numChars.length))).join('');
+      } else {
+        randStr = Array.from({ length: genLength }, () => upperChars.charAt(Math.floor(Math.random() * upperChars.length))).join('');
+      }
+
+      const fullKey = `${prefix}${randStr}`;
+      if (!existingSet.has(fullKey)) {
+        existingSet.add(fullKey);
+        generated.push(fullKey);
+      }
+    }
+
+    if (append && rawKeysInput.trim()) {
+      setRawKeysInput((prev) => `${prev.trim()}\n${generated.join('\n')}`);
+    } else {
+      setRawKeysInput(generated.join('\n'));
+    }
+  };
+
+  const handleCopyAll = () => {
+    if (!rawKeysInput.trim()) return;
+    navigator.clipboard.writeText(rawKeysInput.trim());
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
+
   const openStockModal = () => {
-    setSelectedProductId(products[0]?._id || '');
+    const initialProdId = products[0]?._id || '';
+    const initialDur = products[0]?.prices[0]?.duration || '';
+    setSelectedProductId(initialProdId);
+    setSelectedDuration(initialDur);
+    setGenPrefix(getSuggestedPrefix(initialProdId, initialDur));
     setRawKeysInput('');
     setFormError(null);
     setFormSuccess(null);
+    setInputMode('manual');
     setIsModalOpen(true);
   };
 
@@ -487,7 +583,7 @@ export default function AdminKeys() {
       )}
 
       {/* Stock Keys Modal */}
-      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="500px">
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="580px">
         <div className="modal-header">
           <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <KeyRound size={18} color="var(--accent-indigo)" />
@@ -533,53 +629,294 @@ export default function AdminKeys() {
         )}
 
         <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Select Product */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="stock-product">Product</label>
-            <select
-              id="stock-product"
-              className="form-input"
-              value={selectedProductId}
-              onChange={(e) => setSelectedProductId(e.target.value)}
-              style={{ background: 'var(--bg-sidebar)' }}
-              required
-            >
-              {products.map((p) => (
-                <option key={p._id} value={p._id}>{p.name}</option>
-              ))}
-            </select>
+          {/* Select Product & Duration Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '12px' }}>
+            {/* Select Product */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="stock-product">Product</label>
+              <select
+                id="stock-product"
+                className="form-input"
+                value={selectedProductId}
+                onChange={(e) => setSelectedProductId(e.target.value)}
+                style={{ background: 'var(--bg-sidebar)' }}
+                required
+              >
+                {products.map((p) => (
+                  <option key={p._id} value={p._id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Select Pricing Duration Option */}
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label" htmlFor="stock-duration">License Duration</label>
+              <select
+                id="stock-duration"
+                className="form-input"
+                value={selectedDuration}
+                onChange={(e) => setSelectedDuration(e.target.value)}
+                style={{ background: 'var(--bg-sidebar)' }}
+                required
+              >
+                {selectedProductObj?.prices.map((p) => (
+                  <option key={p.duration} value={p.duration}>
+                    {p.duration} — (₱{p.price.toFixed(2)})
+                  </option>
+                )) || <option value="">No durations configured</option>}
+              </select>
+            </div>
           </div>
 
-          {/* Select Pricing Duration Option */}
-          <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="stock-duration">License Duration</label>
-            <select
-              id="stock-duration"
-              className="form-input"
-              value={selectedDuration}
-              onChange={(e) => setSelectedDuration(e.target.value)}
-              style={{ background: 'var(--bg-sidebar)' }}
-              required
+          {/* Mode Switcher Tabs */}
+          <div style={{
+            display: 'flex',
+            gap: '6px',
+            padding: '4px',
+            background: 'var(--bg-input)',
+            borderRadius: 'var(--radius-sm)',
+            border: '1px solid var(--border-color)',
+          }}>
+            <button
+              type="button"
+              onClick={() => setInputMode('manual')}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                borderRadius: '4px',
+                border: 'none',
+                background: inputMode === 'manual' ? 'var(--accent-orange)' : 'transparent',
+                color: inputMode === 'manual' ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'var(--transition)',
+              }}
             >
-              {selectedProductObj?.prices.map((p) => (
-                <option key={p.duration} value={p.duration}>
-                  {p.duration} — (₱{p.price.toFixed(2)})
-                </option>
-              )) || <option value="">No durations configured</option>}
-            </select>
+              <FileText size={14} />
+              Manual Paste
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setInputMode('generate');
+                if (!genPrefix && selectedProductId && selectedDuration) {
+                  const suggested = getSuggestedPrefix(selectedProductId, selectedDuration);
+                  setGenPrefix(suggested);
+                }
+              }}
+              style={{
+                flex: 1,
+                padding: '8px 12px',
+                fontSize: '0.8rem',
+                fontWeight: 600,
+                borderRadius: '4px',
+                border: 'none',
+                background: inputMode === 'generate' ? 'var(--accent-orange)' : 'transparent',
+                color: inputMode === 'generate' ? '#fff' : 'var(--text-secondary)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '6px',
+                transition: 'var(--transition)',
+              }}
+            >
+              <Sparkles size={14} />
+              Auto Generator
+            </button>
           </div>
 
-          {/* Paste Keys Textarea */}
+          {/* Generator Controls Panel */}
+          {inputMode === 'generate' && (
+            <div style={{
+              padding: '14px 16px',
+              background: 'rgba(255, 94, 0, 0.04)',
+              border: '1px solid rgba(255, 94, 0, 0.15)',
+              borderRadius: 'var(--radius-sm)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+            }}>
+              {/* Prefix Row */}
+              <div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label className="form-label" style={{ marginBottom: 0, fontSize: '0.75rem', color: 'var(--text-primary)' }}>
+                    Key Prefix / Custom Format
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleAutoSuggestPrefix}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--accent-yellow)',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: 0,
+                    }}
+                    title="Auto-suggest prefix from product and duration"
+                  >
+                    <RefreshCw size={11} />
+                    Suggest Prefix
+                  </button>
+                </div>
+                <input
+                  type="text"
+                  className="form-input"
+                  placeholder="e.g. chrns-mlbb-3d- or VIP-"
+                  value={genPrefix}
+                  onChange={(e) => setGenPrefix(e.target.value)}
+                  style={{ background: 'var(--bg-sidebar)' }}
+                />
+              </div>
+
+              {/* Format, Length, Quantity Grid */}
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px' }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Format</label>
+                  <select
+                    className="form-input"
+                    value={genFormat}
+                    onChange={(e) => setGenFormat(e.target.value as any)}
+                    style={{ background: 'var(--bg-sidebar)', fontSize: '0.8rem' }}
+                  >
+                    <option value="alphanumeric_upper">UPPERCASE (A9B2X)</option>
+                    <option value="alphanumeric_lower">lowercase (a9b2x)</option>
+                    <option value="mixed">Mixed Case (aB9xK)</option>
+                    <option value="numbers">Numbers Only (84920)</option>
+                    <option value="segmented">Blocks (XXXX-XXXX)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>
+                    Random Length {genFormat === 'segmented' ? '(Fixed 8)' : ''}
+                  </label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    min={4}
+                    max={32}
+                    value={genLength}
+                    disabled={genFormat === 'segmented'}
+                    onChange={(e) => setGenLength(Math.max(4, parseInt(e.target.value) || 4))}
+                    style={{ background: 'var(--bg-sidebar)', fontSize: '0.8rem' }}
+                  />
+                </div>
+
+                <div>
+                  <label className="form-label" style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Quantity (Keys)</label>
+                  <input
+                    type="number"
+                    className="form-input"
+                    min={1}
+                    max={500}
+                    value={genQuantity}
+                    onChange={(e) => setGenQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                    style={{ background: 'var(--bg-sidebar)', fontSize: '0.8rem' }}
+                  />
+                </div>
+              </div>
+
+              {/* Generate & Append Buttons */}
+              <div style={{ display: 'flex', gap: '8px', marginTop: '2px' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleGenerateKeys(false)}
+                  style={{ flex: 2, padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                >
+                  <Sparkles size={14} />
+                  Generate {genQuantity} {genQuantity === 1 ? 'Key' : 'Keys'}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleGenerateKeys(true)}
+                  disabled={!rawKeysInput.trim()}
+                  style={{ flex: 1, padding: '8px 14px', fontSize: '0.82rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                  title="Append newly generated keys to the current list"
+                >
+                  + Append More
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Paste / Generated Keys Textarea */}
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" htmlFor="stock-keys">Paste Keys (Bulk)</label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+              <label className="form-label" htmlFor="stock-keys" style={{ marginBottom: 0 }}>
+                {inputMode === 'generate' ? 'License Keys Preview' : 'Paste Keys (Bulk)'}
+                {rawKeysInput.trim() && (
+                  <span style={{ marginLeft: '8px', fontSize: '0.75rem', color: 'var(--accent-emerald)', fontWeight: 700 }}>
+                    ({rawKeysInput.split(/[\n,]/).map((k) => k.trim()).filter(Boolean).length} keys)
+                  </span>
+                )}
+              </label>
+              {rawKeysInput.trim() && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <button
+                    type="button"
+                    onClick={handleCopyAll}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: copiedAll ? 'var(--accent-emerald)' : 'var(--text-secondary)',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      padding: 0,
+                    }}
+                    title="Copy all keys in preview"
+                  >
+                    {copiedAll ? <Check size={12} /> : <Copy size={12} />}
+                    {copiedAll ? 'Copied all!' : 'Copy All'}
+                  </button>
+                  <span style={{ color: 'var(--border-color-hover)' }}>|</span>
+                  <button
+                    type="button"
+                    onClick={() => setRawKeysInput('')}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--accent-crimson)',
+                      fontSize: '0.72rem',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      padding: 0,
+                    }}
+                    title="Clear keys text"
+                  >
+                    Clear
+                  </button>
+                </div>
+              )}
+            </div>
             <textarea
               id="stock-keys"
               className="form-input"
-              rows={6}
-              placeholder="Paste your license keys here. Separate keys by pressing enter (new lines) or using commas.&#10;e.g.&#10;KEY-ABCD-1234&#10;KEY-EFGH-5678"
+              rows={inputMode === 'generate' ? 5 : 6}
+              placeholder={
+                inputMode === 'generate'
+                  ? 'Click "Generate Keys" above to auto-create random keys here. You can also manually edit them.'
+                  : 'Paste your license keys here. Separate keys by pressing enter (new lines) or using commas.\ne.g.\nKEY-ABCD-1234\nKEY-EFGH-5678'
+              }
               value={rawKeysInput}
               onChange={(e) => setRawKeysInput(e.target.value)}
-              style={{ resize: 'vertical', minHeight: '120px' }}
+              style={{ resize: 'vertical', minHeight: '110px', fontFamily: 'monospace', fontSize: '0.82rem' }}
               required
             />
           </div>

@@ -11,6 +11,8 @@ export interface IProduct extends Document {
   image?: string;
   prices: IProductPrice[];
   isActive: boolean;
+  deliveryType?: 'instant' | 'telegram';
+  telegramUsername?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -56,6 +58,16 @@ const ProductSchema: Schema<IProduct> = new Schema(
     isActive: {
       type: Boolean,
       default: true,
+    },
+    deliveryType: {
+      type: String,
+      enum: ['instant', 'telegram'],
+      default: 'instant',
+    },
+    telegramUsername: {
+      type: String,
+      default: 'Sylvieofficeal',
+      trim: true,
     },
   },
   { timestamps: true }

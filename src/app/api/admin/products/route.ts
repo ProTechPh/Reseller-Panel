@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     }
 
     await dbConnect();
-    const { name, description, image, prices, isActive } = await req.json();
+    const { name, description, image, prices, isActive, deliveryType, telegramUsername } = await req.json();
 
     if (!name || !description || !prices || !Array.isArray(prices) || prices.length === 0) {
       return NextResponse.json({ error: 'Missing required product information' }, { status: 400 });
@@ -39,6 +39,8 @@ export async function POST(req: Request) {
       image: image ? image.trim() : undefined,
       prices,
       isActive: isActive !== undefined ? isActive : true,
+      deliveryType: deliveryType || 'instant',
+      telegramUsername: telegramUsername ? telegramUsername.trim().replace(/^@/, '') : 'Sylvieofficeal',
     });
 
     return NextResponse.json({ success: true, product: newProduct });
@@ -56,7 +58,7 @@ export async function PUT(req: Request) {
     }
 
     await dbConnect();
-    const { id, name, description, image, prices, isActive } = await req.json();
+    const { id, name, description, image, prices, isActive, deliveryType, telegramUsername } = await req.json();
 
     if (!id || !name || !description || !prices || !Array.isArray(prices) || prices.length === 0) {
       return NextResponse.json({ error: 'Missing required product information for update' }, { status: 400 });
@@ -70,6 +72,8 @@ export async function PUT(req: Request) {
         image: image ? image.trim() : undefined,
         prices,
         isActive,
+        deliveryType: deliveryType || 'instant',
+        telegramUsername: telegramUsername ? telegramUsername.trim().replace(/^@/, '') : 'Sylvieofficeal',
       },
       { new: true, runValidators: true }
     );
