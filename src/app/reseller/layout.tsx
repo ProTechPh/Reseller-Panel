@@ -3,7 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { LayoutDashboard, ShoppingCart, Key, Receipt, LogOut, Wallet, Menu, Send, Gamepad2, X } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Key, Receipt, LogOut, Wallet, Menu, Send, Gamepad2, X, Compass, KeyRound, Sparkles } from 'lucide-react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Modal from '@/components/Modal';
 
@@ -153,16 +153,16 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
         {children}
       </main>
 
-      {/* Mobile Floating Bottom Navigation Bar (Matched to User Image) */}
+      {/* Mobile Floating Capsule Navigation Dock */}
       <nav className="mobile-bottom-nav">
         <Link 
           href="/reseller/products" 
           className={`mobile-nav-item ${isProductsActive ? 'active' : ''}`}
         >
           <div className="mobile-nav-icon">
-            <Gamepad2 size={20} />
+            <Compass size={19} />
           </div>
-          <span>Product</span>
+          <span>Store</span>
         </Link>
 
         <Link 
@@ -170,9 +170,9 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
           className={`mobile-nav-item ${isKeysActive ? 'active' : ''}`}
         >
           <div className="mobile-nav-icon">
-            <Key size={18} />
+            <KeyRound size={19} />
           </div>
-          <span>My Keys</span>
+          <span>Vault</span>
         </Link>
 
         <button 
@@ -181,9 +181,9 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
           className="mobile-nav-item"
         >
           <div className="mobile-nav-icon">
-            <Wallet size={18} />
+            <Wallet size={19} />
           </div>
-          <span>Add Balance</span>
+          <span>Wallet</span>
         </button>
 
         <button 
@@ -192,7 +192,7 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
           className="mobile-nav-item"
         >
           <div className="mobile-nav-icon">
-            <LogOut size={18} />
+            <LogOut size={19} />
           </div>
           <span>Logout</span>
         </button>
