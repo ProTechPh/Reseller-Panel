@@ -80,17 +80,32 @@ export default function ResellerLayout({ children }: { children: React.ReactNode
 
       {/* Desktop Sidebar */}
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="sidebar-logo" style={{ background: 'transparent', boxShadow: 'none' }}>
-            <img src="/images/logo.png" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '4px' }} />
+        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '1px solid rgba(144, 71, 255, 0.15)' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, rgba(144, 71, 255, 0.25) 0%, rgba(110, 39, 216, 0.15) 100%)',
+            border: '1px solid rgba(144, 71, 255, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 14px rgba(144, 71, 255, 0.3)',
+            overflow: 'hidden',
+            flexShrink: 0
+          }}>
+            <img src="/images/logo.png?v=2" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
           </div>
-          <span style={{ fontWeight: 700, fontSize: '0.95rem', letterSpacing: '-0.01em' }}>Reseller Panel</span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 850, fontSize: '1rem', letterSpacing: '-0.01em', color: '#ffffff' }}>Reseller Panel</span>
+            <span style={{ fontSize: '0.68rem', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Sylvie Studio</span>
+          </div>
         </div>
-        <div className="wallet-widget">
+        <div className="wallet-widget" style={{ border: '1px solid rgba(144, 71, 255, 0.18)', background: 'rgba(23, 19, 42, 0.6)' }}>
           <div className="wallet-icon"><Wallet size={16} /></div>
           <div className="wallet-details">
             <span className="wallet-label">{reseller?.resellerType === 'unlimited' ? 'Account Tier' : 'Your Balance'}</span>
-            <span className="wallet-value" style={{ color: reseller?.resellerType === 'unlimited' ? 'var(--accent-orange)' : 'var(--accent-emerald)' }}>
+            <span className="wallet-value" style={{ color: reseller?.resellerType === 'unlimited' ? '#c084fc' : '#34d399' }}>
               {reseller?.resellerType === 'unlimited' ? '∞ Unlimited' : `₱${(reseller?.balance || 0).toFixed(2)}`}
             </span>
           </div>

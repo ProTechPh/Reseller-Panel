@@ -570,14 +570,14 @@ export default function ResellerProducts() {
                 return (
                   <div key={product._id} className="play-card" onClick={() => handleOpenBuy(product)}>
                     <div>
-                      {/* Portrait Poster Cover */}
+                      {/* Square Poster Cover */}
                       <div className="play-card-media">
                         <ProductImage
                           src={thumbnail}
                           alt={product.name}
-                          width={400}
-                          height={530}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                          width={500}
+                          height={500}
+                          style={{ width: '100%', height: '100%', objectFit: 'cover', objectPosition: 'center' }}
                         />
 
                         {/* Favorite Heart Button */}

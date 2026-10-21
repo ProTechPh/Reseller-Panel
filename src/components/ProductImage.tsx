@@ -20,7 +20,7 @@ export default function ProductImage({
   height = 500,
   className,
   style,
-  fallback = '/images/logo.png',
+  fallback = '/images/logo.png?v=2',
 }: ProductImageProps) {
   const [hasError, setHasError] = useState(false);
   const cloudName = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME;

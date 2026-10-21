@@ -69,11 +69,26 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)} />
 
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header">
-          <div className="sidebar-logo" style={{ background: 'transparent', boxShadow: 'none' }}>
-            <img src="/images/logo.png" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain', borderRadius: '4px' }} />
+        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '1px solid rgba(144, 71, 255, 0.15)' }}>
+          <div style={{
+            width: '36px',
+            height: '36px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, rgba(144, 71, 255, 0.25) 0%, rgba(110, 39, 216, 0.15) 100%)',
+            border: '1px solid rgba(144, 71, 255, 0.35)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            boxShadow: '0 4px 14px rgba(144, 71, 255, 0.3)',
+            overflow: 'hidden',
+            flexShrink: 0
+          }}>
+            <img src="/images/logo.png?v=2" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
           </div>
-          <span style={{ fontWeight: 700, fontSize: '0.95rem', letterSpacing: '-0.01em' }}>Admin Portal</span>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            <span style={{ fontWeight: 850, fontSize: '1rem', letterSpacing: '-0.01em', color: '#ffffff' }}>Admin Portal</span>
+            <span style={{ fontSize: '0.68rem', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Management</span>
+          </div>
         </div>
         <nav className="sidebar-nav">
           {menuItems.map((item) => {
