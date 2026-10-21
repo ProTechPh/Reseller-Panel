@@ -98,6 +98,46 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         </div>
       </aside>
       <main className="main-content">{children}</main>
+
+      {/* Admin Mobile Floating Bottom Navigation Bar */}
+      <nav className="mobile-bottom-nav">
+        <Link 
+          href="/admin/dashboard" 
+          className={`mobile-nav-item ${pathname === '/admin/dashboard' ? 'active' : ''}`}
+        >
+          <div className="mobile-nav-icon"><LayoutDashboard size={18} /></div>
+          <span>Dashboard</span>
+        </Link>
+        <Link 
+          href="/admin/products" 
+          className={`mobile-nav-item ${pathname.startsWith('/admin/products') ? 'active' : ''}`}
+        >
+          <div className="mobile-nav-icon"><Package size={18} /></div>
+          <span>Products</span>
+        </Link>
+        <Link 
+          href="/admin/keys" 
+          className={`mobile-nav-item ${pathname.startsWith('/admin/keys') ? 'active' : ''}`}
+        >
+          <div className="mobile-nav-icon"><KeyRound size={18} /></div>
+          <span>Keys</span>
+        </Link>
+        <Link 
+          href="/admin/resellers" 
+          className={`mobile-nav-item ${pathname.startsWith('/admin/resellers') ? 'active' : ''}`}
+        >
+          <div className="mobile-nav-icon"><Users size={18} /></div>
+          <span>Resellers</span>
+        </Link>
+        <button 
+          type="button" 
+          onClick={handleLogout} 
+          className="mobile-nav-item"
+        >
+          <div className="mobile-nav-icon"><LogOut size={18} /></div>
+          <span>Logout</span>
+        </button>
+      </nav>
     </div>
   );
 }

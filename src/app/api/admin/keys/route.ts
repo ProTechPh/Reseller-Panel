@@ -5,7 +5,7 @@ import Product from '@/models/Product';
 import User from '@/models/User';
 import { getSessionUser } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const session = await getSessionUser();
     if (!session || session.role !== 'admin') {
@@ -14,18 +14,79 @@ export async function GET() {
 
     await dbConnect();
 
-    // Ensure Mongoose models are explicitly initialized and registered before populate
+    // Ensure Mongoose models are explicitly initialized before populate
     const ProductModel = Product;
     const UserModel = User;
     const KeyModel = LicenseKey;
 
-    // Fetch all keys, populating product and reseller info
-    const keys = await KeyModel.find({})
-      .populate('productId', 'name')
-      .populate('resellerId', 'username')
-      .sort({ createdAt: -1 });
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get('page') || '1', 10));
+    const limit = Math.max(1, Math.min(100, parseInt(searchParams.get('limit') || '25', 10)));
+    const status = searchParams.get('status') || 'all';
+    const productId = searchParams.get('productId') || 'all';
+    const search = (searchParams.get('search') || '').trim();
 
-    return NextResponse.json({ success: true, keys });
+    // Build filter query
+    const query: any = {};
+
+    if (status === 'available') {
+      query.isSold = false;
+    } else if (status === 'sold') {
+      query.isSold = true;
+    }
+
+    if (productId && productId !== 'all') {
+      query.productId = productId;
+    }
+
+    if (search) {
+      const [matchingProducts, matchingUsers] = await Promise.all([
+        ProductModel.find({ name: { $regex: search, $options: 'i' } }).select('_id'),
+        UserModel.find({ username: { $regex: search, $options: 'i' } }).select('_id'),
+      ]);
+      const prodIds = matchingProducts.map((p) => p._id);
+      const userIds = matchingUsers.map((u) => u._id);
+
+      query.$or = [
+        { key: { $regex: search, $options: 'i' } },
+        { duration: { $regex: search, $options: 'i' } },
+        { productId: { $in: prodIds } },
+        { resellerId: { $in: userIds } },
+      ];
+    }
+
+    const skip = (page - 1) * limit;
+
+    // Parallel queries for fast performance
+    const [totalKeys, availableCount, soldCount, filteredTotal, keys] = await Promise.all([
+      KeyModel.countDocuments({}),
+      KeyModel.countDocuments({ isSold: false }),
+      KeyModel.countDocuments({ isSold: true }),
+      KeyModel.countDocuments(query),
+      KeyModel.find(query)
+        .populate('productId', 'name')
+        .populate('resellerId', 'username')
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+    ]);
+
+    const totalPages = Math.ceil(filteredTotal / limit) || 1;
+
+    return NextResponse.json({
+      success: true,
+      keys,
+      pagination: {
+        page,
+        limit,
+        totalKeys,
+        availableCount,
+        soldCount,
+        filteredTotal,
+        totalPages,
+      },
+    });
   } catch (error: any) {
     console.error('Fetch keys error:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

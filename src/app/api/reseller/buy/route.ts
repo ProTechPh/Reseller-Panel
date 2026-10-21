@@ -145,6 +145,7 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       licenseKey: keyItem.key,
+      key: keyItem.key,
       newBalance: updatedUserBalance,
       resellerType: currentUser.resellerType || 'budget',
     });

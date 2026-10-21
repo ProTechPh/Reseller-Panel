@@ -57,7 +57,7 @@ export function proxy(request: NextRequest) {
     if (isAdminApi && session.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
-    if (isResellerApi && session.role !== 'reseller') {
+    if (isResellerApi && session.role !== 'reseller' && session.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 

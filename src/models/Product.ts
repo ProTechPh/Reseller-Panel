@@ -9,6 +9,7 @@ export interface IProduct extends Document {
   name: string;
   description: string;
   image?: string;
+  platform?: 'Android' | 'iOS' | 'PC';
   prices: IProductPrice[];
   isActive: boolean;
   deliveryType?: 'instant' | 'telegram';
@@ -45,6 +46,11 @@ const ProductSchema: Schema<IProduct> = new Schema(
     image: {
       type: String,
       required: false,
+    },
+    platform: {
+      type: String,
+      enum: ['Android', 'iOS', 'PC'],
+      default: 'Android',
     },
     prices: {
       type: [ProductPriceSchema],

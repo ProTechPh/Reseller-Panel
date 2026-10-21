@@ -1,7 +1,10 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
-import { Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText, Search, Key, ShoppingBag, Box, Trash, Sparkles, Copy, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState, useCallback } from 'react';
+import { 
+  Plus, X, AlertCircle, Trash2, KeyRound, Check, FileText, Search, Key, ShoppingBag, Box, Trash, Sparkles, Copy, RefreshCw,
+  ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight
+} from 'lucide-react';
 import Modal from '@/components/Modal';
 import CopyButton from '@/components/CopyButton';
 
@@ -49,7 +52,15 @@ export default function AdminKeys() {
   const [genFormat, setGenFormat] = useState<'alphanumeric_upper' | 'alphanumeric_lower' | 'mixed' | 'numbers' | 'segmented'>('alphanumeric_upper');
   const [copiedAll, setCopiedAll] = useState(false);
 
-  // Filter State
+  // Filter & Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalInventoryCount, setTotalInventoryCount] = useState(0);
+  const [totalAvailableCount, setTotalAvailableCount] = useState(0);
+  const [totalSoldCount, setTotalSoldCount] = useState(0);
+  const [filteredTotal, setFilteredTotal] = useState(0);
+
   const [statusFilter, setStatusFilter] = useState<'all' | 'available' | 'sold'>('all');
   const [productFilter, setProductFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,23 +71,37 @@ export default function AdminKeys() {
   const [bulkDeleteLoading, setBulkDeleteLoading] = useState(false);
   const [bulkDeleteConfirm, setBulkDeleteConfirm] = useState(false);
 
-  const loadData = async () => {
+  // Fetch paginated keys from server
+  const fetchKeys = useCallback(async (
+    page = currentPage,
+    limit = itemsPerPage,
+    status = statusFilter,
+    prodId = productFilter,
+    search = searchQuery
+  ) => {
     try {
       setLoading(true);
-      const [keysRes, productsRes] = await Promise.all([
-        fetch('/api/admin/keys'),
-        fetch('/api/admin/products'),
-      ]);
+      const params = new URLSearchParams({
+        page: String(page),
+        limit: String(limit),
+        status,
+        productId: prodId,
+        search,
+      });
 
-      if (keysRes.ok) {
-        const keysData = await keysRes.json();
-        if (keysData.success) setKeys(keysData.keys);
-      }
-
-      if (productsRes.ok) {
-        const prodData = await productsRes.json();
-        if (prodData.success) {
-          setProducts(prodData.products);
+      const res = await fetch(`/api/admin/keys?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setKeys(data.keys || []);
+          if (data.pagination) {
+            setTotalPages(data.pagination.totalPages || 1);
+            setTotalInventoryCount(data.pagination.totalKeys || 0);
+            setTotalAvailableCount(data.pagination.availableCount || 0);
+            setTotalSoldCount(data.pagination.soldCount || 0);
+            setFilteredTotal(data.pagination.filteredTotal || 0);
+            setCurrentPage(data.pagination.page || 1);
+          }
         }
       }
     } catch (err) {
@@ -84,11 +109,35 @@ export default function AdminKeys() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentPage, itemsPerPage, statusFilter, productFilter, searchQuery]);
 
+  // Load products list once on mount
   useEffect(() => {
-    loadData();
+    async function loadProducts() {
+      try {
+        const res = await fetch('/api/admin/products');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success) setProducts(data.products || []);
+        }
+      } catch (err) {
+        console.error('Failed to load products list:', err);
+      }
+    }
+    loadProducts();
   }, []);
+
+  // Debounced fetch when search query or filters change
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      fetchKeys(1, itemsPerPage, statusFilter, productFilter, searchQuery);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery, statusFilter, productFilter, itemsPerPage]);
+
+  const loadData = () => {
+    fetchKeys(currentPage, itemsPerPage, statusFilter, productFilter, searchQuery);
+  };
 
   // Update selected product's first duration option automatically when product changes
   useEffect(() => {
@@ -314,31 +363,6 @@ export default function AdminKeys() {
     }
   };
 
-  // Filter keys list based on dropdown state and search input
-  const filteredKeys = keys.filter((k) => {
-    const statusMatch = 
-      statusFilter === 'all' || 
-      (statusFilter === 'available' && !k.isSold) || 
-      (statusFilter === 'sold' && k.isSold);
-      
-    const productMatch =
-      productFilter === 'all' ||
-      k.productId?._id === productFilter;
-
-    const query = searchQuery.toLowerCase().trim();
-    const matchesSearch = 
-      !query || 
-      k.key.toLowerCase().includes(query) || 
-      k.productId?.name?.toLowerCase().includes(query) ||
-      (k.resellerId?.username && k.resellerId.username.toLowerCase().includes(query));
-
-    return statusMatch && productMatch && matchesSearch;
-  });
-
-  const totalAvailableCount = keys.filter((k) => !k.isSold).length;
-  const totalSoldCount = keys.filter((k) => k.isSold).length;
-  const totalInventoryCount = keys.length;
-
   const selectedProductObj = products.find((p) => p._id === selectedProductId);
 
   return (
@@ -492,24 +516,24 @@ export default function AdminKeys() {
       {loading ? (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
           <div style={{
-            width: '24px',
-            height: '24px',
+            width: '28px',
+            height: '28px',
             border: '2px solid rgba(255,255,255,0.05)',
-            borderTopColor: 'var(--accent-indigo)',
+            borderTopColor: '#e50914',
             borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
+            animation: 'spin 0.8s linear infinite',
           }} />
         </div>
-      ) : keys.length === 0 ? (
+      ) : totalInventoryCount === 0 ? (
         <div className="card" style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
           {products.length === 0 
             ? 'Please add products in the Product Catalog first before stocking license keys.' 
             : 'No license keys have been stocked yet. Click "Stock Keys (Bulk)" to add inventory.'
           }
         </div>
-      ) : filteredKeys.length === 0 ? (
+      ) : keys.length === 0 ? (
         <div className="card" style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          No license keys match your filters.
+          No license keys match your search or filter.
         </div>
       ) : (
         <div className="table-card">
@@ -527,7 +551,7 @@ export default function AdminKeys() {
                 </tr>
               </thead>
               <tbody>
-                {filteredKeys.map((keyItem) => (
+                {keys.map((keyItem) => (
                   <tr key={keyItem._id}>
                     <td style={{ fontWeight: 700 }}>
                       {keyItem.productId?.name || <span style={{ color: 'var(--text-muted)' }}>Deleted Product</span>}
@@ -578,6 +602,81 @@ export default function AdminKeys() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* Pagination Controls */}
+          <div className="pagination-bar">
+            <div className="pagination-info">
+              Showing <strong>{filteredTotal === 0 ? 0 : (currentPage - 1) * itemsPerPage + 1}</strong> to{' '}
+              <strong>{Math.min(currentPage * itemsPerPage, filteredTotal)}</strong> of{' '}
+              <strong>{filteredTotal}</strong> keys
+            </div>
+
+            <div className="pagination-controls">
+              <div className="pagination-limit-wrap">
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>Show:</span>
+                <select
+                  className="form-input"
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    const newLimit = parseInt(e.target.value, 10);
+                    setItemsPerPage(newLimit);
+                    fetchKeys(1, newLimit, statusFilter, productFilter, searchQuery);
+                  }}
+                  style={{ padding: '4px 8px', fontSize: '0.78rem', width: 'auto', background: 'var(--bg-sidebar)' }}
+                >
+                  <option value={25}>25 / page</option>
+                  <option value={50}>50 / page</option>
+                  <option value={100}>100 / page</option>
+                </select>
+              </div>
+
+              <div className="pagination-buttons">
+                <button
+                  type="button"
+                  className="btn-page"
+                  disabled={currentPage <= 1}
+                  onClick={() => fetchKeys(1, itemsPerPage, statusFilter, productFilter, searchQuery)}
+                  title="First Page"
+                >
+                  <ChevronsLeft size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-page"
+                  disabled={currentPage <= 1}
+                  onClick={() => fetchKeys(Math.max(1, currentPage - 1), itemsPerPage, statusFilter, productFilter, searchQuery)}
+                  title="Previous Page"
+                >
+                  <ChevronLeft size={15} />
+                </button>
+
+                <span className="pagination-page-indicator">
+                  Page {currentPage} of {totalPages}
+                </span>
+
+                <button
+                  type="button"
+                  className="btn-page"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => fetchKeys(Math.min(totalPages, currentPage + 1), itemsPerPage, statusFilter, productFilter, searchQuery)}
+                  title="Next Page"
+                >
+                  <ChevronRight size={15} />
+                </button>
+
+                <button
+                  type="button"
+                  className="btn-page"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => fetchKeys(totalPages, itemsPerPage, statusFilter, productFilter, searchQuery)}
+                  title="Last Page"
+                >
+                  <ChevronsRight size={15} />
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
+import Link from 'next/link';
 import { 
   ShoppingCart, CheckCircle, AlertCircle, X, Wallet, Copy, Check, Info,
-  Search, Shield, Laptop, Globe, Flame, Gamepad, Layers, DollarSign, Send, Zap
+  Search, Send, Zap, Gamepad2, LayoutGrid
 } from 'lucide-react';
 import Modal from '@/components/Modal';
+import ProductImage from '@/components/ProductImage';
 
 interface PriceOption {
   duration: string;
@@ -17,9 +19,43 @@ interface ProductType {
   name: string;
   description: string;
   image?: string;
+  platform?: 'Android' | 'iOS' | 'PC';
   prices: PriceOption[];
   deliveryType?: 'instant' | 'telegram';
   telegramUsername?: string;
+}
+
+// Simple filter categories
+const CATEGORY_CHIPS = [
+  { id: 'all', label: 'All' },
+  { id: 'codm', label: 'CODM' },
+  { id: 'dfm', label: 'DFM' },
+  { id: 'pubg', label: 'PUBG' },
+  { id: '8ball', label: '8-Ball' },
+  { id: 'android', label: 'Android' },
+  { id: 'ios', label: 'iOS' },
+  { id: 'pc', label: 'PC' },
+];
+
+function detectPlatform(prod: ProductType): 'Android' | 'iOS' | 'PC' {
+  if (prod.platform) return prod.platform;
+  const text = (prod.name + ' ' + (prod.description || '')).toLowerCase();
+  if (text.includes('ios') || text.includes('iphone') || text.includes('ipad')) return 'iOS';
+  if (text.includes('android') || text.includes('apk') || text.includes('root')) return 'Android';
+  if (text.includes('pc') || text.includes('windows') || text.includes('steam')) return 'PC';
+  if (text.includes('codm') || text.includes('dfm') || text.includes('pubg') || text.includes('8ball')) return 'Android';
+  return 'PC';
+}
+
+function getThumbnail(prod: ProductType): string {
+  if (prod.image && prod.image.trim()) return prod.image;
+  const name = prod.name.toLowerCase();
+  if (name.includes('codm') || name.includes('call of duty')) return '/images/codm.png';
+  if (name.includes('dfm') || name.includes('delta')) return '/images/deltaforcemobile.png';
+  if (name.includes('pubg')) return '/images/pubg.png';
+  if (name.includes('8ball') || name.includes('pool')) return '/images/8ballpool.png';
+  if (name.includes('ghosst')) return '/images/Ghosst.png';
+  return '/images/logo.png';
 }
 
 export default function ResellerProducts() {
@@ -28,23 +64,18 @@ export default function ResellerProducts() {
   const [resellerType, setResellerType] = useState<'budget' | 'unlimited'>('budget');
   const [stock, setStock] = useState<Record<string, Record<string, number>>>({});
   const [loading, setLoading] = useState(true);
-  
-  // Modals state
+
+  // Simple Filter State
+  const [activeChip, setActiveChip] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Purchase Modal State
   const [selectedProduct, setSelectedProduct] = useState<ProductType | null>(null);
   const [selectedDuration, setSelectedDuration] = useState<string>('');
   const [purchaseError, setPurchaseError] = useState<string | null>(null);
   const [purchasing, setPurchasing] = useState(false);
-  
-  // Success state
   const [successKey, setSuccessKey] = useState<string | null>(null);
   const [copiedKey, setCopiedKey] = useState(false);
-  const [copiedTg, setCopiedTg] = useState(false);
-
-  // Client-Side Filters State
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedPlatforms, setSelectedPlatforms] = useState<string[]>(['PC']);
-  const [selectedRegions, setSelectedRegions] = useState<string[]>(['GLOBAL']);
 
   const loadData = async () => {
     try {
@@ -76,7 +107,7 @@ export default function ResellerProducts() {
         if (stockData.success) setStock(stockData.stock);
       }
     } catch (err) {
-      console.error('Failed to load shop data:', err);
+      console.error('Failed to load products:', err);
     } finally {
       setLoading(false);
     }
@@ -86,9 +117,16 @@ export default function ResellerProducts() {
     loadData();
   }, []);
 
-  const openPurchaseModal = (product: ProductType) => {
+  const getStockCount = (productId: string, duration: string): number => {
+    return stock[productId]?.[duration] || 0;
+  };
+
+  // Open Buy Modal with first duration pre-selected
+  const handleOpenBuy = (product: ProductType) => {
     setSelectedProduct(product);
-    setSelectedDuration(product.prices[0]?.duration || '');
+    // Find first duration that has stock, or default to first
+    const firstInStock = product.prices.find(p => getStockCount(product._id, p.duration) > 0);
+    setSelectedDuration(firstInStock ? firstInStock.duration : (product.prices[0]?.duration || ''));
     setPurchaseError(null);
     setSuccessKey(null);
     setCopiedKey(false);
@@ -96,6 +134,8 @@ export default function ResellerProducts() {
 
   const closePurchaseModal = () => {
     setSelectedProduct(null);
+    setSelectedDuration('');
+    setPurchaseError(null);
     setSuccessKey(null);
   };
 
@@ -105,22 +145,18 @@ export default function ResellerProducts() {
     return option ? option.price : 0;
   };
 
-  const getStockCount = (productId: string, duration: string): number => {
-    return stock[productId]?.[duration] || 0;
-  };
-
   const handleConfirmPurchase = async () => {
     if (!selectedProduct || !selectedDuration) return;
-    
+
     const price = getSelectedPrice();
-    if (balance < price) {
-      setPurchaseError('Insufficient balance to complete this purchase.');
+    if (resellerType !== 'unlimited' && balance < price) {
+      setPurchaseError('Kulang ang inyong balance para sa pagbili.');
       return;
     }
 
     const availableStock = getStockCount(selectedProduct._id, selectedDuration);
     if (availableStock <= 0) {
-      setPurchaseError('This item is currently out of stock.');
+      setPurchaseError('Wala nang stock para sa duration na ito.');
       return;
     }
 
@@ -142,22 +178,29 @@ export default function ResellerProducts() {
         throw new Error(data.error || 'Failed to complete purchase.');
       }
 
-      if (data.success && data.licenseKey) {
-        setSuccessKey(data.licenseKey.key);
+      if (data.success && (data.licenseKey || data.key)) {
+        const keyVal = typeof data.licenseKey === 'string'
+          ? data.licenseKey
+          : data.licenseKey?.key || data.key;
+        setSuccessKey(keyVal);
         setBalance(data.newBalance);
-        
-        // Refresh stock counts
+
+        // Auto copy to clipboard for convenience
+        if (keyVal && navigator?.clipboard?.writeText) {
+          navigator.clipboard.writeText(keyVal).catch(() => {});
+        }
+
+        // Refresh stock
         const stockRes = await fetch('/api/reseller/products/stock');
         if (stockRes.ok) {
           const stockData = await stockRes.json();
           if (stockData.success) setStock(stockData.stock);
         }
 
-        // Trigger balance update in sidebar
         window.dispatchEvent(new Event('balance-update'));
       }
     } catch (err: any) {
-      setPurchaseError(err.message || 'An unexpected error occurred.');
+      setPurchaseError(err.message || 'May error sa pag-proseso.');
     } finally {
       setPurchasing(false);
     }
@@ -170,474 +213,235 @@ export default function ResellerProducts() {
     setTimeout(() => setCopiedKey(false), 2000);
   };
 
-  // Toggle checklist filters
-  const toggleFilter = (value: string, state: string[], setState: React.Dispatch<React.SetStateAction<string[]>>) => {
-    if (state.includes(value)) {
-      setState(state.filter((x) => x !== value));
-    } else {
-      setState([...state, value]);
-    }
-  };
+  // Filter products by active chip and search query
+  const filteredProducts = useMemo(() => {
+    return products.filter((prod) => {
+      const text = (prod.name + ' ' + (prod.description || '')).toLowerCase();
 
-  // Filter products based on search query and sidebar options
-  const filteredProducts = products.filter((prod) => {
-    // 1. Search Query Filter
-    const query = searchQuery.toLowerCase().trim();
-    const matchesSearch = !query || prod.name.toLowerCase().includes(query) || prod.description.toLowerCase().includes(query);
+      // Chip filter
+      if (activeChip !== 'all') {
+        if (activeChip === 'android' || activeChip === 'ios' || activeChip === 'pc') {
+          const plat = detectPlatform(prod).toLowerCase();
+          if (plat !== activeChip) return false;
+        } else {
+          // Game keyword
+          if (!text.includes(activeChip)) return false;
+        }
+      }
 
-    // 2. Category Filter (infer from product name/description keywords)
-    const matchesCategory = 
-      selectedCategories.length === 0 ||
-      selectedCategories.some((cat) => {
-        if (cat === 'Cheats') return prod.name.toLowerCase().includes('cheat') || prod.name.toLowerCase().includes('hack');
-        if (cat === 'Spoofers') return prod.name.toLowerCase().includes('spoofer') || prod.description.toLowerCase().includes('spoofer');
-        if (cat === 'Bypassers') return prod.name.toLowerCase().includes('bypass') || prod.description.toLowerCase().includes('cleaner');
-        return true;
-      });
+      // Search query
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase().trim();
+        if (!text.includes(q)) return false;
+      }
 
-    return matchesSearch && matchesCategory;
-  });
+      return true;
+    });
+  }, [products, activeChip, searchQuery]);
 
   const selectedPrice = getSelectedPrice();
   const remainingBalance = balance - selectedPrice;
   const isBalanceSufficient = resellerType === 'unlimited' ? true : remainingBalance >= 0;
-  const currentItemStock = selectedProduct ? getStockCount(selectedProduct._id, selectedDuration) : 0;
+  const currentItemStock = selectedProduct && selectedDuration ? getStockCount(selectedProduct._id, selectedDuration) : 0;
   const isStockAvailable = currentItemStock > 0;
 
   return (
-    <div className="animate-fade-in">
-      {/* Search Header Bar (Eneba Style) */}
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '16px',
-        marginBottom: '32px'
-      }}>
-        <h1>CD-Key Storefront</h1>
-        <p className="subtitle">Search and buy verified license keys instantly. Instant electronic delivery.</p>
+    <div className="simple-storefront animate-fade-in">
 
-        {/* Eneba Central Search Box */}
-        <div style={{
-          display: 'flex',
-          background: 'var(--bg-card)',
-          border: '1px solid var(--border-color)',
-          borderRadius: 'var(--radius-md)',
-          padding: '4px',
-          alignItems: 'center',
-          maxWidth: '650px',
-          boxShadow: 'var(--shadow-sm)'
-        }}>
-          <div style={{ padding: '0 12px', color: 'var(--text-secondary)' }}>
-            <Search size={18} />
-          </div>
+      {/* 1. SIMPLE COMPACT TOP SECTION (Search + Filter Chips) */}
+      <section className="simple-top-section">
+        <div className="simple-search-box">
+          <Search size={16} color="#94a3b8" />
           <input
             type="text"
-            className="form-input"
-            placeholder="Search game, product name, spoofer, bypass..."
+            placeholder="Search game or cheat name..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              background: 'transparent',
-              border: 'none',
-              boxShadow: 'none',
-              padding: '10px 4px',
-              fontSize: '0.95rem'
-            }}
           />
           {searchQuery && (
-            <button 
+            <button
+              type="button"
               onClick={() => setSearchQuery('')}
-              style={{
-                background: 'transparent',
-                border: 'none',
-                cursor: 'pointer',
-                color: 'var(--text-secondary)',
-                marginRight: '8px'
-              }}
+              style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer' }}
             >
-              <X size={16} />
+              <X size={15} />
             </button>
           )}
         </div>
+
+        {/* Clean horizontal single-row filter chips */}
+        <div className="simple-chips-row">
+          {CATEGORY_CHIPS.map((chip) => (
+            <button
+              key={chip.id}
+              type="button"
+              className={`simple-chip ${activeChip === chip.id ? 'active' : ''}`}
+              onClick={() => setActiveChip(chip.id)}
+            >
+              {chip.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
+      {/* 2. HEADER BAR */}
+      <div className="simple-header-row">
+        <div className="simple-header-title">
+          <Gamepad2 size={20} color="#e50914" />
+          <span>Available Products</span>
+        </div>
+        <span className="simple-count-badge">{filteredProducts.length}</span>
       </div>
 
+      {/* 3. ULTRA-SIMPLE PRODUCT GRID (2 columns on mobile, 1 clean button per card) */}
       {loading ? (
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '200px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '200px' }}>
           <div style={{
-            width: '24px',
-            height: '24px',
-            border: '2px solid rgba(255,255,255,0.05)',
-            borderTopColor: 'var(--accent-orange)',
+            width: '28px',
+            height: '28px',
+            border: '2px solid rgba(255,255,255,0.1)',
+            borderTopColor: '#e50914',
             borderRadius: '50%',
-            animation: 'spin 1s linear infinite',
+            animation: 'spin 0.8s linear infinite',
           }} />
         </div>
-      ) : products.length === 0 ? (
-        <div className="card" style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-          No active products are currently available in the catalog.
+      ) : filteredProducts.length === 0 ? (
+        <div style={{ padding: '60px 20px', textAlign: 'center', color: '#94a3b8', background: '#111116', borderRadius: '16px' }}>
+          <p>Walang nakitang products para sa filter na ito.</p>
         </div>
       ) : (
-        /* Double Column Grid Layout (Eneba Store Style) */
-        <div className="store-container">
-          
-          {/* Left Filters Panel */}
-          <aside className="store-filters">
-            {/* Category Filter */}
-            <div className="filter-section">
-              <div className="filter-title">Category</div>
-              <div className="filter-options">
-                {['Cheats', 'Spoofers', 'Bypassers'].map((cat) => {
-                  const checked = selectedCategories.includes(cat);
-                  return (
-                    <div 
-                      key={cat} 
-                      className="filter-item" 
-                      onClick={() => toggleFilter(cat, selectedCategories, setSelectedCategories)}
+        <div className="simple-grid">
+          {filteredProducts.map((product) => {
+            const platform = detectPlatform(product);
+            const thumbnail = getThumbnail(product);
+            const isTg = product.deliveryType === 'telegram';
+            const lowestPrice = [...product.prices].sort((a, b) => a.price - b.price)[0]?.price || 0;
+
+            return (
+              <div key={product._id} className="simple-card">
+                <div>
+                  {/* Thumbnail Image + Platform Tag */}
+                  <div className="simple-card-image">
+                    <ProductImage
+                      src={thumbnail}
+                      alt={product.name}
+                      width={400}
+                      height={260}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                    <span className={`simple-platform-tag ${platform.toLowerCase()}`}>
+                      {platform}
+                    </span>
+                  </div>
+
+                  {/* Product Title */}
+                  <h3 className="simple-card-title" title={product.name}>
+                    {product.name}
+                  </h3>
+                </div>
+
+                {/* Pricing & Single Action Button */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div className="simple-card-price-row">
+                    <span className="simple-card-price-label">Starts at</span>
+                    <span className="simple-card-price-val">₱{lowestPrice.toFixed(2)}</span>
+                  </div>
+
+                  {isTg ? (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBuy(product)}
+                      className="btn-simple-tg"
                     >
-                      <div className={`filter-checkbox ${checked ? 'checked' : ''}`}>
-                        {checked && <Check size={11} />}
-                      </div>
-                      <span>{cat}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Platform Filter */}
-            <div className="filter-section">
-              <div className="filter-title">Platform</div>
-              <div className="filter-options">
-                {['PC', 'Steam', 'Xbox', 'PlayStation'].map((plat) => {
-                  const checked = selectedPlatforms.includes(plat);
-                  return (
-                    <div 
-                      key={plat} 
-                      className="filter-item" 
-                      onClick={() => toggleFilter(plat, selectedPlatforms, setSelectedPlatforms)}
+                      <Send size={14} />
+                      <span>Order via TG</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handleOpenBuy(product)}
+                      className="btn-simple-buy"
                     >
-                      <div className={`filter-checkbox ${checked ? 'checked' : ''}`}>
-                        {checked && <Check size={11} />}
-                      </div>
-                      <span>{plat}</span>
-                    </div>
-                  );
-                })}
+                      <ShoppingCart size={15} />
+                      <span>Buy Key</span>
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
-
-            {/* Region Filter */}
-            <div className="filter-section">
-              <div className="filter-title">Region</div>
-              <div className="filter-options">
-                {['GLOBAL', 'EUROPE', 'NORTH AMERICA', 'ASIA'].map((reg) => {
-                  const checked = selectedRegions.includes(reg);
-                  return (
-                    <div 
-                      key={reg} 
-                      className="filter-item" 
-                      onClick={() => toggleFilter(reg, selectedRegions, setSelectedRegions)}
-                    >
-                      <div className={`filter-checkbox ${checked ? 'checked' : ''}`}>
-                        {checked && <Check size={11} />}
-                      </div>
-                      <span>{reg}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </aside>
-
-          {/* Right Product Grid */}
-          <section className="store-grid">
-            {filteredProducts.length === 0 ? (
-              <div className="card" style={{ padding: '60px 24px', textAlign: 'center', color: 'var(--text-secondary)' }}>
-                No keys match your filters or search keywords.
-              </div>
-            ) : (
-              <div style={{
-                display: 'grid',
-                gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
-                gap: '20px',
-              }}>
-                {filteredProducts.map((product) => {
-                  const pricesSorted = [...product.prices].sort((a, b) => a.price - b.price);
-                  const lowestPrice = pricesSorted[0];
-                  const isTgDelivery = product.deliveryType === 'telegram';
-
-                  // Count total stock available across all durations for this product
-                  const totalProductStock = isTgDelivery ? 0 : product.prices.reduce((sum, p) => sum + getStockCount(product._id, p.duration), 0);
-
-                  return (
-                    <div key={product._id} className="card card-hover" style={{
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'space-between',
-                      height: '100%',
-                      padding: '16px' // Padded card
-                    }}>
-                      <div>
-                        {/* Cover Banner Art */}
-                        <div className="product-cover">
-                          <img 
-                            src={
-                              product.image && product.image.trim() 
-                                ? product.image 
-                                : product.name.toLowerCase().includes('mobile legends') || product.name.toLowerCase().includes('mlbb') ? '/images/mlbb.png'
-                                : product.name.toLowerCase().includes('call of duty') || product.name.toLowerCase().includes('codm') ? '/images/codm.png'
-                                : product.name.toLowerCase().includes('pubg') ? '/images/pubg.png'
-                                : product.name.toLowerCase().includes('8 ball') || product.name.toLowerCase().includes('pool') ? '/images/8ballpool.png'
-                                : product.name.toLowerCase().includes('blood') ? '/images/bloodstrike.png'
-                                : product.name.toLowerCase().includes('crossfire') ? '/images/crossfire.png'
-                                : product.name.toLowerCase().includes('free fire') ? '/images/freefire.png'
-                                : product.name.toLowerCase().includes('delta') ? '/images/deltaforcemobile.png'
-                                : '/images/logo.png'
-                            } 
-                            alt={product.name} 
-                            onError={(e) => {
-                              (e.target as HTMLImageElement).src = '/images/logo.png';
-                            }}
-                          />
-                        </div>
-
-                        {/* Title */}
-                        <h3 style={{ fontSize: '0.95rem', fontWeight: 800, marginBottom: '6px', lineHeight: '1.25' }}>
-                          {product.name}
-                        </h3>
-
-                        {/* Badges / Game Attributes */}
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '14px' }}>
-                          {isTgDelivery ? (
-                            <span className="badge badge-yellow" style={{ fontSize: '0.65rem', padding: '2px 8px', background: 'rgba(34, 158, 217, 0.15)', color: '#29b6f6', border: '1px solid rgba(34, 158, 217, 0.3)' }}>
-                              <Send size={10} style={{ marginRight: '4px' }} />
-                              TELEGRAM DM
-                            </span>
-                          ) : (
-                            <span className="badge badge-indigo" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                              <Zap size={10} style={{ marginRight: '4px' }} />
-                              INSTANT KEY
-                            </span>
-                          )}
-                          <span className="badge badge-emerald" style={{ fontSize: '0.65rem', padding: '2px 8px' }}>
-                            <Globe size={10} style={{ marginRight: '4px' }} />
-                            GLOBAL
-                          </span>
-                        </div>
-
-                        <p style={{ fontSize: '0.8rem', marginBottom: '20px', color: 'var(--text-secondary)', minHeight: '36px', lineBreak: 'anywhere' }}>
-                          {product.description.length > 70 ? product.description.substring(0, 68) + '...' : product.description}
-                        </p>
-                      </div>
-
-                      <div>
-                        {/* Pricing details and Buy CTA */}
-                        <div style={{
-                          display: 'flex',
-                          alignItems: 'baseline',
-                          justifyContent: 'space-between',
-                          marginBottom: '12px',
-                          borderTop: '1px solid var(--border-color)',
-                          paddingTop: '12px',
-                        }}>
-                          <span style={{ fontSize: '0.7rem', color: isTgDelivery ? '#29b6f6' : 'var(--text-secondary)', fontWeight: isTgDelivery ? 600 : 400 }}>
-                            {isTgDelivery ? 'Direct TG Order' : (totalProductStock === 0 ? 'Out of stock' : `${totalProductStock} keys left`)}
-                          </span>
-                          <div>
-                            <span style={{ fontSize: '1.25rem', fontWeight: 850, color: 'var(--accent-orange)' }}>
-                              ₱{lowestPrice?.price.toFixed(2)}
-                            </span>
-                            <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>
-                              /{lowestPrice?.duration}
-                            </span>
-                          </div>
-                        </div>
-
-                        {isTgDelivery ? (
-                          <button
-                            onClick={() => openPurchaseModal(product)}
-                            className="btn btn-primary"
-                            style={{
-                              width: '100%',
-                              padding: '9px 16px',
-                              fontSize: '0.85rem',
-                              background: 'linear-gradient(90deg, #229ED9 0%, #0088cc 100%)',
-                              border: 'none',
-                              color: '#fff',
-                            }}
-                          >
-                            <Send size={13} />
-                            Order via Telegram
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => openPurchaseModal(product)}
-                            className="btn btn-primary"
-                            style={{ width: '100%', padding: '9px 16px', fontSize: '0.85rem' }}
-                          >
-                            <ShoppingCart size={13} />
-                            Buy License Key
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </section>
-
+            );
+          })}
         </div>
       )}
 
-      {/* Purchase Modal Overlay */}
+      {/* 4. CLEAN 2-STEP PURCHASE MODAL */}
       <Modal isOpen={!!selectedProduct} onClose={closePurchaseModal}>
         {selectedProduct && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {selectedProduct.deliveryType === 'telegram' ? (
-              /* Telegram Direct Delivery Modal */
+              /* Telegram Direct Order Modal */
               <>
                 <div className="modal-header">
-                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
                     <Send size={18} color="#29b6f6" />
                     Order via Telegram
                   </h2>
-                  <button onClick={closePurchaseModal} className="modal-close">
-                    <X size={18} />
-                  </button>
+                  <button onClick={closePurchaseModal} className="modal-close"><X size={18} /></button>
                 </div>
 
                 <div>
-                  <span className="form-label" style={{ fontSize: '0.75rem' }}>Selected Product</span>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {selectedProduct.name}
-                  </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  <div style={{ fontSize: '1.05rem', fontWeight: 800 }}>{selectedProduct.name}</div>
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '4px' }}>
                     {selectedProduct.description}
                   </p>
                 </div>
 
-                {/* Duration & Pricing Options */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label">Select Pricing Option</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {selectedProduct.prices.map((p) => {
-                      const isSelected = selectedDuration === p.duration;
-                      return (
-                        <div
-                          key={p.duration}
-                          onClick={() => setSelectedDuration(p.duration)}
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '10px 14px',
-                            borderRadius: 'var(--radius-sm)',
-                            border: isSelected ? '1px solid #0088cc' : '1px solid var(--border-color)',
-                            background: isSelected ? 'rgba(0, 136, 204, 0.12)' : 'rgba(255, 255, 255, 0.01)',
-                            cursor: 'pointer',
-                            transition: 'var(--transition)',
-                          }}
-                        >
-                          <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{p.duration}</span>
-                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: isSelected ? '#29b6f6' : 'white' }}>
-                            ₱{p.price.toFixed(2)}
-                          </span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Telegram Guidance Box */}
-                <div style={{
-                  background: 'rgba(34, 158, 217, 0.08)',
-                  border: '1px solid rgba(34, 158, 217, 0.25)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '14px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '8px',
-                }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#29b6f6', fontWeight: 700, fontSize: '0.85rem' }}>
-                    <Send size={15} />
-                    <span>Direct Message Fulfillment</span>
-                  </div>
-                  <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', margin: 0, lineHeight: 1.45 }}>
-                    Ang keys para sa product na ito ay ibinibigay nang <strong>direct message sa Telegram</strong> ng admin.
-                    I-click ang button sa ibaba para mag-chat kay <strong>@{(selectedProduct.telegramUsername || 'Sylvieofficeal').replace(/^@/, '')}</strong>.
-                  </p>
-                </div>
-
-                {/* Telegram Action Buttons */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '6px' }}>
-                  <a
-                    href={`https://t.me/${(selectedProduct.telegramUsername || 'Sylvieofficeal').replace(/^@/, '')}?text=${encodeURIComponent(
-                      `Hello Admin! I would like to order "${selectedProduct.name}" (${selectedDuration}) from the Reseller Panel.`
-                    )}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="btn btn-primary"
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      gap: '8px',
-                      padding: '12px 18px',
-                      background: 'linear-gradient(90deg, #229ED9 0%, #0088cc 100%)',
-                      border: 'none',
-                      color: '#fff',
-                      fontWeight: 700,
-                      fontSize: '0.9rem',
-                      textDecoration: 'none',
-                      borderRadius: 'var(--radius-sm)',
-                      boxShadow: '0 4px 14px rgba(0, 136, 204, 0.3)',
-                    }}
-                  >
-                    <Send size={15} />
-                    Message @{(selectedProduct.telegramUsername || 'Sylvieofficeal').replace(/^@/, '')} on Telegram
-                  </a>
-
-                  <div style={{ display: 'flex', gap: '8px' }}>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        navigator.clipboard.writeText(`@${(selectedProduct.telegramUsername || 'Sylvieofficeal').replace(/^@/, '')}`);
-                        setCopiedTg(true);
-                        setTimeout(() => setCopiedTg(false), 2000);
-                      }}
-                      style={{ flex: 1, padding: '8px 12px', fontSize: '0.78rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
+                <div className="simple-duration-picker">
+                  {selectedProduct.prices.map((p) => (
+                    <div
+                      key={p.duration}
+                      className={`simple-duration-pill ${selectedDuration === p.duration ? 'active' : ''}`}
+                      onClick={() => setSelectedDuration(p.duration)}
                     >
-                      {copiedTg ? <Check size={13} /> : <Copy size={13} />}
-                      {copiedTg ? 'Username Copied!' : 'Copy Username'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={closePurchaseModal}
-                      style={{ flex: 1, padding: '8px 12px', fontSize: '0.78rem' }}
-                    >
-                      Close
-                    </button>
-                  </div>
+                      <span style={{ fontWeight: 700 }}>{p.duration}</span>
+                      <span style={{ fontWeight: 800, color: '#fbbf24' }}>₱{p.price.toFixed(2)}</span>
+                    </div>
+                  ))}
                 </div>
+
+                <a
+                  href={`https://t.me/${(selectedProduct.telegramUsername || 'Sylvieofficeal').replace(/^@/, '')}?text=${encodeURIComponent(
+                    `Hello Admin! I would like to order "${selectedProduct.name}" (${selectedDuration}) from the Reseller Panel.`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    padding: '12px',
+                    borderRadius: '10px',
+                    background: '#0088cc',
+                    border: 'none',
+                    fontWeight: 800,
+                    textDecoration: 'none',
+                    color: '#fff',
+                  }}
+                >
+                  <Send size={15} />
+                  Chat on Telegram (@{(selectedProduct.telegramUsername || 'Sylvieofficeal').replace(/^@/, '')})
+                </a>
               </>
             ) : !successKey ? (
-              /* Phase 1: Configure & Confirm Purchase */
+              /* Phase 1: Pick Duration & 1-Tap Confirm */
               <>
                 <div className="modal-header">
-                  <h2>Buy License Key</h2>
-                  <button onClick={closePurchaseModal} className="modal-close">
-                    <X size={18} />
-                  </button>
-                </div>
-
-                <div>
-                  <span className="form-label" style={{ fontSize: '0.75rem' }}>Selected Product</span>
-                  <div style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-primary)' }}>
-                    {selectedProduct.name}
-                  </div>
+                  <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
+                    <ShoppingCart size={18} color="#e50914" />
+                    Buy License Key
+                  </h2>
+                  <button onClick={closePurchaseModal} className="modal-close"><X size={18} /></button>
                 </div>
 
                 {purchaseError && (
@@ -645,51 +449,62 @@ export default function ResellerProducts() {
                     display: 'flex',
                     alignItems: 'center',
                     gap: '8px',
-                    background: 'rgba(244, 63, 94, 0.06)',
-                    border: '1px solid rgba(244, 63, 94, 0.15)',
-                    color: 'var(--accent-crimson)',
-                    padding: '10px 14px',
-                    borderRadius: 'var(--radius-sm)',
-                    fontSize: '0.8rem',
+                    background: 'rgba(239, 68, 68, 0.1)',
+                    border: '1px solid rgba(239, 68, 68, 0.3)',
+                    color: '#ef4444',
+                    padding: '10px 12px',
+                    borderRadius: '10px',
+                    fontSize: '0.82rem',
+                    fontWeight: 600,
                   }}>
-                    <AlertCircle size={15} />
+                    <AlertCircle size={15} style={{ flexShrink: 0 }} />
                     <span>{purchaseError}</span>
                   </div>
                 )}
 
-                {/* Duration Selection Buttons */}
-                <div className="form-group" style={{ marginBottom: 0 }}>
-                  <label className="form-label" htmlFor="dur-select">Select Duration</label>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Product Name Header */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '12px',
+                  background: '#16161c',
+                  border: '1px solid rgba(255,255,255,0.06)',
+                  borderRadius: '12px',
+                  padding: '10px 12px',
+                }}>
+                  <div style={{ width: '44px', height: '44px', borderRadius: '8px', overflow: 'hidden', flexShrink: 0, background: '#09090b' }}>
+                    <ProductImage src={getThumbnail(selectedProduct)} alt={selectedProduct.name} width={88} height={88} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.95rem', color: '#fff' }}>{selectedProduct.name}</div>
+                    <span className={`simple-platform-tag ${detectPlatform(selectedProduct).toLowerCase()}`} style={{ position: 'static' }}>
+                      {detectPlatform(selectedProduct)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Duration Picker Pills */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                  <span style={{ fontSize: '0.78rem', color: '#94a3b8', fontWeight: 700 }}>Pumili ng Duration:</span>
+                  <div className="simple-duration-picker">
                     {selectedProduct.prices.map((p) => {
                       const isSelected = selectedDuration === p.duration;
-                      const stockForThisDur = getStockCount(selectedProduct._id, p.duration);
-                      const hasStock = stockForThisDur > 0;
+                      const stockCount = getStockCount(selectedProduct._id, p.duration);
+                      const isOut = stockCount <= 0;
 
                       return (
                         <div
                           key={p.duration}
-                          onClick={() => hasStock && setSelectedDuration(p.duration)}
-                          style={{
-                            display: 'flex',
-                            justifyContent: 'space-between',
-                            alignItems: 'center',
-                            padding: '10px 14px',
-                            borderRadius: 'var(--radius-sm)',
-                            border: isSelected ? '1px solid var(--accent-orange)' : '1px solid var(--border-color)',
-                            background: isSelected ? 'rgba(255, 94, 0, 0.08)' : 'rgba(255, 255, 255, 0.01)',
-                            cursor: hasStock ? 'pointer' : 'not-allowed',
-                            opacity: hasStock ? 1 : 0.4,
-                            transition: 'var(--transition)',
-                          }}
+                          className={`simple-duration-pill ${isSelected ? 'active' : ''} ${isOut ? 'out' : ''}`}
+                          onClick={() => !isOut && setSelectedDuration(p.duration)}
                         >
                           <div>
-                            <span style={{ fontWeight: 600, fontSize: '0.9rem' }}>{p.duration}</span>
-                            <div style={{ fontSize: '0.75rem', color: hasStock ? 'var(--accent-cyan)' : 'var(--accent-crimson)' }}>
-                              {hasStock ? `${stockForThisDur} in stock` : 'Out of stock'}
+                            <span style={{ fontWeight: 700, fontSize: '0.9rem', color: '#fff' }}>{p.duration}</span>
+                            <div style={{ fontSize: '0.7rem', color: isOut ? '#ef4444' : '#10b981', marginTop: '2px' }}>
+                              {isOut ? 'Out of stock' : `${stockCount} available`}
                             </div>
                           </div>
-                          <span style={{ fontWeight: 700, fontSize: '0.95rem', color: isSelected ? 'var(--accent-orange)' : 'white' }}>
+                          <span style={{ fontWeight: 850, fontSize: '1rem', color: '#fbbf24' }}>
                             ₱{p.price.toFixed(2)}
                           </span>
                         </div>
@@ -698,137 +513,79 @@ export default function ResellerProducts() {
                   </div>
                 </div>
 
-                {/* Pricing & Balance Calculation Breakdown */}
+                {/* Balance Summary */}
                 <div style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-color)',
-                  borderRadius: 'var(--radius-sm)',
-                  padding: '12px 14px',
+                  background: '#16161c',
+                  borderRadius: '10px',
+                  padding: '10px 14px',
                   display: 'flex',
-                  flexDirection: 'column',
-                  gap: '6px',
-                  fontSize: '0.85rem',
+                  justifyContent: 'space-between',
+                  fontSize: '0.82rem',
                 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Item Price:</span>
-                    <span style={{ fontWeight: 600 }}>{resellerType === 'unlimited' ? '₱0.00 (Unlimited Tier)' : `₱${selectedPrice.toFixed(2)}`}</span>
-                  </div>
-                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                    <span style={{ color: 'var(--text-secondary)' }}>Account Mode:</span>
-                    <span style={{ fontWeight: 600, color: resellerType === 'unlimited' ? 'var(--accent-orange)' : 'white' }}>
-                      {resellerType === 'unlimited' ? '∞ Unlimited Generation' : `₱${balance.toFixed(2)} Balance`}
-                    </span>
-                  </div>
-                  <div style={{
-                    borderTop: '1px solid var(--border-color)',
-                    paddingTop: '6px',
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    fontWeight: 700
-                  }}>
-                    <span>Remaining Balance:</span>
-                    <span style={{ color: isBalanceSufficient ? 'var(--accent-emerald)' : 'var(--accent-crimson)' }}>
-                      {resellerType === 'unlimited' ? '∞ Unlimited' : `₱${remainingBalance.toFixed(2)}`}
-                    </span>
-                  </div>
+                  <span style={{ color: '#94a3b8' }}>Your Balance:</span>
+                  <span style={{ fontWeight: 800, color: '#10b981' }}>
+                    {resellerType === 'unlimited' ? '∞ Unlimited' : `₱${balance.toFixed(2)}`}
+                  </span>
                 </div>
 
-                {/* Stock Level Warning with Telegram contact fallback */}
-                {!isStockAvailable && (
-                  <div style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    gap: '4px',
-                    fontSize: '0.8rem',
-                    color: 'var(--accent-crimson)',
-                    padding: '10px 12px',
-                    background: 'rgba(244, 63, 94, 0.04)',
-                    border: '1px solid rgba(244, 63, 94, 0.15)',
-                    borderRadius: 'var(--radius-sm)',
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <Info size={14} style={{ flexShrink: 0 }} />
-                      <span>Out of stocked keys in panel for this duration.</span>
-                    </div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.75rem', marginLeft: '22px' }}>
-                      Need key immediately? Message{' '}
-                      <a
-                        href="https://t.me/Sylvieofficeal"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ color: '#29b6f6', textDecoration: 'underline', fontWeight: 600 }}
-                      >
-                        @Sylvieofficeal on Telegram
-                      </a>
-                    </div>
-                  </div>
-                )}
-
-                {!isBalanceSufficient && isStockAvailable && (
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    fontSize: '0.8rem',
-                    color: 'var(--accent-crimson)',
-                    padding: '8px 10px',
-                    background: 'rgba(244, 63, 94, 0.04)',
-                    borderRadius: 'var(--radius-sm)',
-                  }}>
-                    <Info size={13} style={{ flexShrink: 0 }} />
-                    <span>Please contact an administrator to top up your balance.</span>
-                  </div>
-                )}
-
-                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '10px', marginTop: '10px' }}>
-                  <button type="button" className="btn btn-secondary" onClick={closePurchaseModal}>
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={purchasing || !isBalanceSufficient || !isStockAvailable}
-                    onClick={handleConfirmPurchase}
-                    style={{ minWidth: '130px' }}>
-                    {purchasing ? 'Purchasing...' : 'Confirm Purchase'}
-                  </button>
-                </div>
+                {/* Confirm Button */}
+                <button
+                  type="button"
+                  disabled={purchasing || !isBalanceSufficient || !isStockAvailable}
+                  onClick={handleConfirmPurchase}
+                  style={{
+                    width: '100%',
+                    padding: '13px',
+                    borderRadius: '10px',
+                    background: '#e50914',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: 850,
+                    fontSize: '0.95rem',
+                    cursor: (purchasing || !isBalanceSufficient || !isStockAvailable) ? 'not-allowed' : 'pointer',
+                    opacity: (purchasing || !isBalanceSufficient || !isStockAvailable) ? 0.5 : 1,
+                    boxShadow: '0 4px 14px rgba(229, 9, 20, 0.4)',
+                  }}
+                >
+                  {purchasing ? 'Processing...' : `Confirm Purchase (₱${selectedPrice.toFixed(2)})`}
+                </button>
               </>
             ) : (
-              /* Phase 2: Purchase Success Display Key */
-              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              /* Phase 2: Instant License Key Display */
+              <div style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                 <div style={{
                   display: 'inline-flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  width: '48px',
-                  height: '48px',
+                  width: '50px',
+                  height: '50px',
                   borderRadius: '50%',
-                  background: 'rgba(16, 185, 129, 0.08)',
-                  color: 'var(--accent-emerald)',
+                  background: 'rgba(16, 185, 129, 0.15)',
+                  color: '#10b981',
                   margin: '0 auto',
                 }}>
-                  <CheckCircle size={28} />
+                  <CheckCircle size={30} />
                 </div>
-                
+
                 <div>
-                  <h2>Purchase Successful</h2>
-                  <p className="subtitle" style={{ fontSize: '0.85rem', marginTop: '4px' }}>
-                    Your license key for <strong>{selectedProduct.name}</strong> ({selectedDuration}) has been claimed.
+                  <h2 style={{ fontSize: '1.2rem', fontWeight: 850 }}>Purchase Successful!</h2>
+                  <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '2px' }}>
+                    {selectedProduct.name} ({selectedDuration})
                   </p>
                 </div>
 
+                {/* Big Monospace Key Display */}
                 <div style={{
-                  background: 'rgba(255,255,255,0.01)',
-                  border: '1px dashed var(--border-color)',
-                  borderRadius: 'var(--radius-sm)',
+                  background: '#09090c',
+                  border: '1px solid rgba(16, 185, 129, 0.4)',
+                  borderRadius: '12px',
                   padding: '14px',
                 }}>
                   <code style={{
                     fontFamily: 'monospace',
-                    fontSize: '1.05rem',
-                    fontWeight: 700,
-                    color: 'var(--accent-orange)',
+                    fontSize: '1.15rem',
+                    fontWeight: 800,
+                    color: '#10b981',
                     wordBreak: 'break-all',
                     display: 'block',
                   }}>
@@ -836,24 +593,45 @@ export default function ResellerProducts() {
                   </code>
                 </div>
 
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleCopySuccessKey}
-                    style={{ width: '100%' }}
-                  >
-                    {copiedKey ? <Check size={16} /> : <Copy size={16} />}
-                    {copiedKey ? 'Copied!' : 'Copy License Key'}
-                  </button>
+                {/* 1-Tap Copy Key Button */}
+                <button
+                  type="button"
+                  onClick={handleCopySuccessKey}
+                  style={{
+                    width: '100%',
+                    padding: '13px',
+                    borderRadius: '10px',
+                    background: copiedKey ? '#059669' : '#10b981',
+                    border: 'none',
+                    color: '#ffffff',
+                    fontWeight: 800,
+                    fontSize: '0.95rem',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {copiedKey ? <Check size={18} /> : <Copy size={18} />}
+                  {copiedKey ? 'Key Copied!' : 'Copy License Key'}
+                </button>
 
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <Link
+                    href="/reseller/keys"
+                    className="btn btn-secondary"
+                    style={{ flex: 1, padding: '10px', textAlign: 'center', textDecoration: 'none', fontSize: '0.82rem', borderRadius: '10px' }}
+                  >
+                    View in My Keys
+                  </Link>
                   <button
                     type="button"
                     className="btn btn-secondary"
                     onClick={closePurchaseModal}
-                    style={{ width: '100%' }}
+                    style={{ flex: 1, padding: '10px', fontSize: '0.82rem', borderRadius: '10px' }}
                   >
-                    Close Store Modal
+                    Done
                   </button>
                 </div>
               </div>
@@ -861,6 +639,7 @@ export default function ResellerProducts() {
           </div>
         )}
       </Modal>
+
     </div>
   );
 }
