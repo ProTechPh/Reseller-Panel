@@ -246,9 +246,10 @@ export default function ImageUploader({ value, onChange }: ImageUploaderProps) {
             style={{
               padding: '3px 8px',
               borderRadius: '6px',
-              background: value === img.path ? '#9047ff' : 'rgba(255,255,255,0.06)',
-              border: value === img.path ? '1px solid #9047ff' : '1px solid rgba(255,255,255,0.1)',
-              color: value === img.path ? '#fff' : 'var(--text-secondary)',
+              background: value === img.path ? '#00f0ff' : 'rgba(255,255,255,0.06)',
+              border: value === img.path ? '1px solid #00f0ff' : '1px solid rgba(255,255,255,0.1)',
+              color: value === img.path ? '#04090e' : 'var(--text-secondary)',
+              fontWeight: value === img.path ? 800 : 500,
               fontSize: '0.72rem',
               cursor: 'pointer',
             }}

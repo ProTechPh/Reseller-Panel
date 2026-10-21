@@ -337,8 +337,8 @@ export default function AdminProducts() {
         marginBottom: '26px',
         flexWrap: 'wrap',
         gap: '16px',
-        background: '#201a3b',
-        border: '1px solid rgba(144, 71, 255, 0.2)',
+        background: '#0d1724',
+        border: '1px solid rgba(0, 240, 255, 0.2)',
         borderRadius: '20px',
         padding: '24px 28px',
         boxShadow: '0 12px 32px rgba(10, 8, 20, 0.45)',
@@ -350,9 +350,9 @@ export default function AdminProducts() {
             gap: '6px',
             padding: '4px 10px',
             borderRadius: '999px',
-            background: 'rgba(144, 71, 255, 0.16)',
-            border: '1px solid rgba(144, 71, 255, 0.35)',
-            color: '#c084fc',
+            background: 'rgba(0, 240, 255, 0.16)',
+            border: '1px solid rgba(0, 240, 255, 0.35)',
+            color: '#00f0ff',
             fontSize: '0.7rem',
             fontWeight: 800,
             textTransform: 'uppercase',
@@ -364,7 +364,7 @@ export default function AdminProducts() {
           <h1 style={{
             fontSize: '2rem',
             fontWeight: 850,
-            background: 'linear-gradient(180deg, #ffffff 0%, #d8b4fe 100%)',
+            background: 'linear-gradient(180deg, #ffffff 0%, #a5f3fc 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             letterSpacing: '-0.02em',
@@ -380,7 +380,7 @@ export default function AdminProducts() {
         <button 
           onClick={openCreateModal}
           style={{
-            background: 'linear-gradient(135deg, #9047ff 0%, #6e27d8 100%)',
+            background: 'linear-gradient(135deg, #00f0ff 0%, #0099cc 100%)',
             border: 'none',
             color: '#fff',
             padding: '12px 22px',
@@ -391,7 +391,7 @@ export default function AdminProducts() {
             display: 'inline-flex',
             alignItems: 'center',
             gap: '8px',
-            boxShadow: '0 8px 24px rgba(144, 71, 255, 0.4)',
+            boxShadow: '0 8px 24px rgba(0, 240, 255, 0.4)',
             transition: 'all 0.2s ease',
           }}
           onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-2px)')}
@@ -402,11 +402,11 @@ export default function AdminProducts() {
         </button>
       </div>
 
-      {/* 2. OVERVIEW STAT CARDS (Purple theme) */}
+      {/* 2. OVERVIEW STAT CARDS (Ghosst Cyber Cyan theme) */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
         <div style={{
-          background: '#201a3b',
-          border: '1px solid rgba(144, 71, 255, 0.16)',
+          background: '#0d1724',
+          border: '1px solid rgba(0, 240, 255, 0.16)',
           borderRadius: '16px',
           padding: '18px 20px',
           display: 'flex',
@@ -418,12 +418,12 @@ export default function AdminProducts() {
             width: '46px',
             height: '46px',
             borderRadius: '12px',
-            background: 'rgba(144, 71, 255, 0.16)',
-            border: '1px solid rgba(144, 71, 255, 0.3)',
+            background: 'rgba(0, 240, 255, 0.16)',
+            border: '1px solid rgba(0, 240, 255, 0.3)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            color: '#a855f7'
+            color: '#00e5ff'
           }}>
             <Package size={22} />
           </div>
@@ -438,7 +438,7 @@ export default function AdminProducts() {
         </div>
 
         <div style={{
-          background: '#201a3b',
+          background: '#0d1724',
           border: '1px solid rgba(16, 185, 129, 0.2)',
           borderRadius: '16px',
           padding: '18px 20px',
@@ -471,7 +471,7 @@ export default function AdminProducts() {
         </div>
 
         <div style={{
-          background: '#201a3b',
+          background: '#0d1724',
           border: '1px solid rgba(56, 189, 248, 0.2)',
           borderRadius: '16px',
           padding: '18px 20px',
@@ -510,8 +510,8 @@ export default function AdminProducts() {
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: '14px',
-        background: '#201a3b',
-        border: '1px solid rgba(144, 71, 255, 0.18)',
+        background: '#0d1724',
+        border: '1px solid rgba(0, 240, 255, 0.18)',
         borderRadius: '16px',
         padding: '12px 18px',
         marginBottom: '24px',
@@ -522,8 +522,8 @@ export default function AdminProducts() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          background: '#161226',
-          border: '1px solid rgba(144, 71, 255, 0.25)',
+          background: '#070e17',
+          border: '1px solid rgba(0, 240, 255, 0.25)',
           borderRadius: '999px',
           padding: '8px 16px',
           flex: 1,
@@ -567,8 +567,8 @@ export default function AdminProducts() {
                 style={{
                   padding: '7px 14px',
                   borderRadius: '999px',
-                  background: active ? '#9047ff' : '#28204b',
-                  border: active ? '1px solid #9047ff' : '1px solid rgba(144, 71, 255, 0.2)',
+                  background: active ? '#00f0ff' : '#111f30',
+                  border: active ? '1px solid #00f0ff' : '1px solid rgba(0, 240, 255, 0.2)',
                   color: active ? '#ffffff' : '#bfa2db',
                   fontSize: '0.8rem',
                   fontWeight: 700,
@@ -594,8 +594,8 @@ export default function AdminProducts() {
                 style={{
                   padding: '7px 14px',
                   borderRadius: '999px',
-                  background: active ? '#9047ff' : '#28204b',
-                  border: active ? '1px solid #9047ff' : '1px solid rgba(144, 71, 255, 0.2)',
+                  background: active ? '#00f0ff' : '#111f30',
+                  border: active ? '1px solid #00f0ff' : '1px solid rgba(0, 240, 255, 0.2)',
                   color: active ? '#ffffff' : '#bfa2db',
                   fontSize: '0.8rem',
                   fontWeight: 700,
@@ -613,10 +613,10 @@ export default function AdminProducts() {
         {/* View Mode Toggle */}
         <div style={{
           display: 'flex',
-          background: '#161226',
+          background: '#070e17',
           borderRadius: '999px',
           padding: '4px',
-          border: '1px solid rgba(144, 71, 255, 0.25)'
+          border: '1px solid rgba(0, 240, 255, 0.25)'
         }}>
           <button
             type="button"
@@ -624,7 +624,7 @@ export default function AdminProducts() {
             style={{
               padding: '6px 12px',
               borderRadius: '999px',
-              background: viewMode === 'grid' ? '#9047ff' : 'transparent',
+              background: viewMode === 'grid' ? '#00f0ff' : 'transparent',
               border: 'none',
               color: '#ffffff',
               cursor: 'pointer',
@@ -645,7 +645,7 @@ export default function AdminProducts() {
             style={{
               padding: '6px 12px',
               borderRadius: '999px',
-              background: viewMode === 'table' ? '#9047ff' : 'transparent',
+              background: viewMode === 'table' ? '#00f0ff' : 'transparent',
               border: 'none',
               color: '#ffffff',
               cursor: 'pointer',
@@ -669,29 +669,29 @@ export default function AdminProducts() {
           <div style={{
             width: '36px',
             height: '36px',
-            border: '3px solid rgba(144, 71, 255, 0.2)',
-            borderTopColor: '#9047ff',
+            border: '3px solid rgba(0, 240, 255, 0.2)',
+            borderTopColor: '#00f0ff',
             borderRadius: '50%',
             animation: 'spin 0.8s linear infinite',
           }} />
         </div>
       ) : products.length === 0 ? (
         <div style={{
-          background: '#201a3b',
-          border: '1px solid rgba(144, 71, 255, 0.2)',
+          background: '#0d1724',
+          border: '1px solid rgba(0, 240, 255, 0.2)',
           borderRadius: '20px',
           padding: '60px 24px',
           textAlign: 'center',
           color: '#bfa2db'
         }}>
-          <Package size={44} style={{ margin: '0 auto 14px auto', color: '#9047ff' }} />
+          <Package size={44} style={{ margin: '0 auto 14px auto', color: '#00f0ff' }} />
           <h3 style={{ fontSize: '1.25rem', color: '#fff' }}>No products in catalog</h3>
           <p style={{ fontSize: '0.88rem', marginTop: '6px' }}>Click "+ Create Product" to add your first game cheat or license.</p>
         </div>
       ) : filteredProducts.length === 0 ? (
         <div style={{
-          background: '#201a3b',
-          border: '1px solid rgba(144, 71, 255, 0.2)',
+          background: '#0d1724',
+          border: '1px solid rgba(0, 240, 255, 0.2)',
           borderRadius: '20px',
           padding: '60px 24px',
           textAlign: 'center',
@@ -717,8 +717,8 @@ export default function AdminProducts() {
               <div
                 key={prod._id}
                 style={{
-                  background: '#201a3b',
-                  border: '1px solid rgba(144, 71, 255, 0.18)',
+                  background: '#0d1724',
+                  border: '1px solid rgba(0, 240, 255, 0.18)',
                   borderRadius: '20px',
                   overflow: 'hidden',
                   display: 'flex',
@@ -729,12 +729,12 @@ export default function AdminProducts() {
                   position: 'relative',
                 }}
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(144, 71, 255, 0.55)';
+                  e.currentTarget.style.borderColor = 'rgba(0, 240, 255, 0.55)';
                   e.currentTarget.style.transform = 'translateY(-4px)';
-                  e.currentTarget.style.boxShadow = '0 16px 36px rgba(144, 71, 255, 0.25)';
+                  e.currentTarget.style.boxShadow = '0 16px 36px rgba(0, 240, 255, 0.25)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(144, 71, 255, 0.18)';
+                  e.currentTarget.style.borderColor = 'rgba(0, 240, 255, 0.18)';
                   e.currentTarget.style.transform = 'translateY(0)';
                   e.currentTarget.style.boxShadow = '0 12px 28px rgba(0, 0, 0, 0.4)';
                 }}
@@ -745,7 +745,7 @@ export default function AdminProducts() {
                     position: 'relative',
                     width: '100%',
                     height: '180px',
-                    background: '#151025',
+                    background: '#070c12',
                     overflow: 'hidden'
                   }}>
                     <ProductImage
@@ -764,7 +764,7 @@ export default function AdminProducts() {
                     <div style={{
                       position: 'absolute',
                       inset: 0,
-                      background: 'linear-gradient(to top, #201a3b 0%, rgba(32, 26, 59, 0.4) 60%, transparent 100%)'
+                      background: 'linear-gradient(to top, #0d1724 0%, rgba(32, 26, 59, 0.4) 60%, transparent 100%)'
                     }} />
 
                     {/* Platform Badge */}
@@ -774,12 +774,12 @@ export default function AdminProducts() {
                       left: '12px',
                       background: 'rgba(23, 19, 42, 0.85)',
                       backdropFilter: 'blur(8px)',
-                      border: '1px solid rgba(144, 71, 255, 0.35)',
+                      border: '1px solid rgba(0, 240, 255, 0.35)',
                       padding: '4px 10px',
                       borderRadius: '999px',
                       fontSize: '0.72rem',
                       fontWeight: 800,
-                      color: platform === 'Android' ? '#34d399' : platform === 'iOS' ? '#38bdf8' : '#a855f7',
+                      color: platform === 'Android' ? '#34d399' : platform === 'iOS' ? '#38bdf8' : '#00e5ff',
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px'
@@ -808,7 +808,7 @@ export default function AdminProducts() {
                       position: 'absolute',
                       bottom: '10px',
                       right: '12px',
-                      background: isTg ? 'rgba(56, 189, 248, 0.9)' : 'rgba(144, 71, 255, 0.9)',
+                      background: isTg ? 'rgba(56, 189, 248, 0.9)' : 'rgba(0, 240, 255, 0.9)',
                       color: '#fff',
                       fontSize: '0.68rem',
                       fontWeight: 800,
@@ -876,8 +876,8 @@ export default function AdminProducts() {
 
                     {/* Pricing Tiers Pills */}
                     <div style={{
-                      background: '#18132e',
-                      border: '1px solid rgba(144, 71, 255, 0.15)',
+                      background: '#080f18',
+                      border: '1px solid rgba(0, 240, 255, 0.15)',
                       borderRadius: '12px',
                       padding: '10px 12px',
                     }}>
@@ -889,8 +889,8 @@ export default function AdminProducts() {
                           <div
                             key={idx}
                             style={{
-                              background: '#28204b',
-                              border: '1px solid rgba(144, 71, 255, 0.22)',
+                              background: '#111f30',
+                              border: '1px solid rgba(0, 240, 255, 0.22)',
                               padding: '3px 8px',
                               borderRadius: '6px',
                               fontSize: '0.74rem',
@@ -900,7 +900,7 @@ export default function AdminProducts() {
                               gap: '4px'
                             }}
                           >
-                            <span style={{ color: '#c084fc' }}>{p.duration}:</span>
+                            <span style={{ color: '#00f0ff' }}>{p.duration}:</span>
                             <strong style={{ color: '#facc15' }}>₱{p.price.toFixed(2)}</strong>
                           </div>
                         ))}
@@ -912,7 +912,7 @@ export default function AdminProducts() {
                 {/* Bottom Actions */}
                 <div style={{
                   padding: '14px 18px',
-                  borderTop: '1px solid rgba(144, 71, 255, 0.15)',
+                  borderTop: '1px solid rgba(0, 240, 255, 0.15)',
                   background: 'rgba(23, 19, 42, 0.5)',
                   display: 'flex',
                   alignItems: 'center',
@@ -924,9 +924,9 @@ export default function AdminProducts() {
                       onClick={() => openStockViewModal(prod)}
                       style={{
                         flex: 1,
-                        background: '#28204b',
-                        border: '1px solid rgba(144, 71, 255, 0.3)',
-                        color: '#c084fc',
+                        background: '#111f30',
+                        border: '1px solid rgba(0, 240, 255, 0.3)',
+                        color: '#00f0ff',
                         borderRadius: '10px',
                         padding: '9px 10px',
                         fontSize: '0.8rem',
@@ -938,8 +938,8 @@ export default function AdminProducts() {
                         gap: '6px',
                         transition: 'all 0.15s ease'
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(144, 71, 255, 0.25)')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = '#28204b')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0, 240, 255, 0.25)')}
+                      onMouseLeave={(e) => (e.currentTarget.style.background = '#111f30')}
                     >
                       <KeyRound size={14} />
                       Keys
@@ -951,7 +951,7 @@ export default function AdminProducts() {
                     onClick={() => openEditModal(prod)}
                     style={{
                       flex: 1,
-                      background: 'linear-gradient(135deg, #9047ff 0%, #6e27d8 100%)',
+                      background: 'linear-gradient(135deg, #00f0ff 0%, #0099cc 100%)',
                       border: 'none',
                       color: '#ffffff',
                       borderRadius: '10px',
@@ -963,7 +963,7 @@ export default function AdminProducts() {
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '6px',
-                      boxShadow: '0 4px 14px rgba(144, 71, 255, 0.3)',
+                      boxShadow: '0 4px 14px rgba(0, 240, 255, 0.3)',
                       transition: 'all 0.15s ease'
                     }}
                     onMouseEnter={(e) => (e.currentTarget.style.transform = 'translateY(-1px)')}
@@ -1002,8 +1002,8 @@ export default function AdminProducts() {
       ) : (
         /* ================= Royal Purple Table List View ================= */
         <div style={{
-          background: '#201a3b',
-          border: '1px solid rgba(144, 71, 255, 0.18)',
+          background: '#0d1724',
+          border: '1px solid rgba(0, 240, 255, 0.18)',
           borderRadius: '18px',
           overflow: 'hidden',
           boxShadow: '0 12px 32px rgba(0, 0, 0, 0.4)'
@@ -1011,7 +1011,7 @@ export default function AdminProducts() {
           <div style={{ overflowX: 'auto' }}>
             <table className="table-saas" style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
-                <tr style={{ background: '#18132e', borderBottom: '1px solid rgba(144, 71, 255, 0.2)' }}>
+                <tr style={{ background: '#080f18', borderBottom: '1px solid rgba(0, 240, 255, 0.2)' }}>
                   <th style={{ padding: '14px 18px', textAlign: 'left', color: '#bfa2db', fontSize: '0.8rem', fontWeight: 700 }}>Product</th>
                   <th style={{ padding: '14px 18px', textAlign: 'left', color: '#bfa2db', fontSize: '0.8rem', fontWeight: 700 }}>Fulfillment</th>
                   <th style={{ padding: '14px 18px', textAlign: 'left', color: '#bfa2db', fontSize: '0.8rem', fontWeight: 700 }}>Stock Left</th>
@@ -1031,10 +1031,10 @@ export default function AdminProducts() {
                     <tr
                       key={prod._id}
                       style={{
-                        borderBottom: '1px solid rgba(144, 71, 255, 0.1)',
+                        borderBottom: '1px solid rgba(0, 240, 255, 0.1)',
                         transition: 'background 0.15s ease'
                       }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(144, 71, 255, 0.08)')}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'rgba(0, 240, 255, 0.08)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
                     >
                       <td style={{ padding: '14px 18px' }}>
@@ -1055,8 +1055,8 @@ export default function AdminProducts() {
                               borderRadius: '999px',
                               fontSize: '0.7rem',
                               fontWeight: 800,
-                              background: '#28204b',
-                              color: platform === 'Android' ? '#34d399' : platform === 'iOS' ? '#38bdf8' : '#c084fc'
+                              background: '#111f30',
+                              color: platform === 'Android' ? '#34d399' : platform === 'iOS' ? '#38bdf8' : '#00f0ff'
                             }}>
                               {platform}
                             </span>
@@ -1086,8 +1086,8 @@ export default function AdminProducts() {
                             gap: '4px',
                             padding: '4px 9px',
                             borderRadius: '999px',
-                            background: 'rgba(144, 71, 255, 0.18)',
-                            color: '#c084fc',
+                            background: 'rgba(0, 240, 255, 0.18)',
+                            color: '#00f0ff',
                             fontSize: '0.72rem',
                             fontWeight: 800
                           }}>
@@ -1119,8 +1119,8 @@ export default function AdminProducts() {
                             <span
                               key={idx}
                               style={{
-                                background: '#28204b',
-                                border: '1px solid rgba(144, 71, 255, 0.2)',
+                                background: '#111f30',
+                                border: '1px solid rgba(0, 240, 255, 0.2)',
                                 padding: '2px 7px',
                                 borderRadius: '6px',
                                 fontSize: '0.72rem',
@@ -1153,9 +1153,9 @@ export default function AdminProducts() {
                               onClick={() => openStockViewModal(prod)}
                               title="View Stocked Keys"
                               style={{
-                                background: '#28204b',
-                                border: '1px solid rgba(144, 71, 255, 0.25)',
-                                color: '#c084fc',
+                                background: '#111f30',
+                                border: '1px solid rgba(0, 240, 255, 0.25)',
+                                color: '#00f0ff',
                                 padding: '6px 10px',
                                 borderRadius: '8px',
                                 cursor: 'pointer',
@@ -1171,7 +1171,7 @@ export default function AdminProducts() {
                             onClick={() => openEditModal(prod)}
                             title="Edit Product"
                             style={{
-                              background: '#9047ff',
+                              background: '#00f0ff',
                               border: 'none',
                               color: '#ffffff',
                               padding: '6px 10px',
@@ -1214,15 +1214,15 @@ export default function AdminProducts() {
       {/* 5. VIEW STOCK MODAL */}
       <Modal isOpen={isStockViewOpen && !!selectedProductForStock} onClose={() => setIsStockViewOpen(false)} maxWidth="680px">
         {selectedProductForStock && (
-          <div style={{ background: '#1c1634', borderRadius: '18px', padding: '6px' }}>
+          <div style={{ background: '#0b1624', borderRadius: '18px', padding: '6px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                 <div style={{
                   width: '40px',
                   height: '40px',
                   borderRadius: '12px',
-                  background: 'rgba(144, 71, 255, 0.2)',
-                  color: '#c084fc',
+                  background: 'rgba(0, 240, 255, 0.2)',
+                  color: '#00f0ff',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center'
@@ -1250,8 +1250,8 @@ export default function AdminProducts() {
                 onChange={(e) => setStockSearchQuery(e.target.value)}
                 style={{
                   width: '100%',
-                  background: '#120d24',
-                  border: '1px solid rgba(144, 71, 255, 0.25)',
+                  background: '#070e17',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
                   borderRadius: '10px',
                   padding: '9px 14px',
                   color: '#fff',
@@ -1262,12 +1262,12 @@ export default function AdminProducts() {
             </div>
 
             <div style={{
-              border: '1px solid rgba(144, 71, 255, 0.2)',
+              border: '1px solid rgba(0, 240, 255, 0.2)',
               borderRadius: '12px',
               overflow: 'hidden',
               maxHeight: '360px',
               overflowY: 'auto',
-              background: '#151027'
+              background: '#070c12'
             }}>
               {loadingKeys ? (
                 <div style={{ padding: '40px', textAlign: 'center', color: '#a59ec1' }}>Loading keys...</div>
@@ -1278,12 +1278,12 @@ export default function AdminProducts() {
               ) : (
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
                   <thead>
-                    <tr style={{ background: '#1f183b', borderBottom: '1px solid rgba(144, 71, 255, 0.2)' }}>
-                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#c084fc' }}>Key Code</th>
-                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#c084fc' }}>Duration</th>
-                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#c084fc' }}>Status</th>
-                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#c084fc' }}>Reseller</th>
-                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#c084fc' }}>Date</th>
+                    <tr style={{ background: '#0a1420', borderBottom: '1px solid rgba(0, 240, 255, 0.2)' }}>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#00f0ff' }}>Key Code</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#00f0ff' }}>Duration</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#00f0ff' }}>Status</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#00f0ff' }}>Reseller</th>
+                      <th style={{ padding: '10px 14px', textAlign: 'left', color: '#00f0ff' }}>Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1291,14 +1291,14 @@ export default function AdminProducts() {
                       <tr key={k._id} style={{ borderBottom: '1px solid rgba(255,255,255,0.05)' }}>
                         <td style={{ padding: '10px 14px' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <code style={{ background: '#28204b', padding: '3px 8px', borderRadius: '6px', color: '#fff', fontSize: '0.78rem' }}>
+                            <code style={{ background: '#111f30', padding: '3px 8px', borderRadius: '6px', color: '#fff', fontSize: '0.78rem' }}>
                               {k.key}
                             </code>
                             <CopyButton text={k.key} size={12} />
                           </div>
                         </td>
                         <td style={{ padding: '10px 14px' }}>
-                          <span style={{ padding: '2px 7px', borderRadius: '999px', background: 'rgba(144, 71, 255, 0.2)', color: '#c084fc', fontSize: '0.72rem', fontWeight: 700 }}>
+                          <span style={{ padding: '2px 7px', borderRadius: '999px', background: 'rgba(0, 240, 255, 0.2)', color: '#00f0ff', fontSize: '0.72rem', fontWeight: 700 }}>
                             {k.duration}
                           </span>
                         </td>
@@ -1330,8 +1330,8 @@ export default function AdminProducts() {
                 type="button"
                 onClick={() => setIsStockViewOpen(false)}
                 style={{
-                  background: '#28204b',
-                  border: '1px solid rgba(144, 71, 255, 0.25)',
+                  background: '#111f30',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
                   color: '#fff',
                   padding: '8px 18px',
                   borderRadius: '999px',
@@ -1349,7 +1349,7 @@ export default function AdminProducts() {
 
       {/* 6. CREATE / EDIT PRODUCT MODAL */}
       <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} maxWidth="540px">
-        <div style={{ background: '#1c1634', borderRadius: '18px', padding: '6px' }}>
+        <div style={{ background: '#0b1624', borderRadius: '18px', padding: '6px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <h2 style={{ fontSize: '1.25rem', color: '#fff', margin: 0 }}>
               {modalMode === 'create' ? 'Create New Product' : 'Edit Product'}
@@ -1382,7 +1382,7 @@ export default function AdminProducts() {
 
           <form onSubmit={handleFormSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#c084fc', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#00f0ff', marginBottom: '6px' }}>
                 Product Name
               </label>
               <input
@@ -1393,8 +1393,8 @@ export default function AdminProducts() {
                 required
                 style={{
                   width: '100%',
-                  background: '#120d24',
-                  border: '1px solid rgba(144, 71, 255, 0.25)',
+                  background: '#070e17',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
                   borderRadius: '10px',
                   padding: '9px 12px',
                   color: '#fff',
@@ -1405,7 +1405,7 @@ export default function AdminProducts() {
             </div>
 
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#c084fc', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#00f0ff', marginBottom: '6px' }}>
                 Description
               </label>
               <textarea
@@ -1414,8 +1414,8 @@ export default function AdminProducts() {
                 onChange={(e) => setDescription(e.target.value)}
                 style={{
                   width: '100%',
-                  background: '#120d24',
-                  border: '1px solid rgba(144, 71, 255, 0.25)',
+                  background: '#070e17',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
                   borderRadius: '10px',
                   padding: '9px 12px',
                   color: '#fff',
@@ -1430,7 +1430,7 @@ export default function AdminProducts() {
 
             {/* Runtime Platform Selection */}
             <div>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#c084fc', marginBottom: '6px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#00f0ff', marginBottom: '6px' }}>
                 Target Platform
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px' }}>
@@ -1444,8 +1444,8 @@ export default function AdminProducts() {
                       style={{
                         padding: '9px 12px',
                         borderRadius: '10px',
-                        border: isSelected ? '1px solid #9047ff' : '1px solid rgba(144, 71, 255, 0.2)',
-                        background: isSelected ? 'rgba(144, 71, 255, 0.25)' : '#120d24',
+                        border: isSelected ? '1px solid #00f0ff' : '1px solid rgba(0, 240, 255, 0.2)',
+                        background: isSelected ? 'rgba(0, 240, 255, 0.25)' : '#070e17',
                         color: isSelected ? '#ffffff' : '#a59ec1',
                         fontWeight: 800,
                         fontSize: '0.85rem',
@@ -1469,12 +1469,12 @@ export default function AdminProducts() {
 
             {/* Fulfillment Mode */}
             <div style={{
-              border: '1px solid rgba(144, 71, 255, 0.2)',
+              border: '1px solid rgba(0, 240, 255, 0.2)',
               borderRadius: '12px',
               padding: '12px',
-              background: '#120d24'
+              background: '#070e17'
             }}>
-              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#c084fc', marginBottom: '8px' }}>
+              <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: '#00f0ff', marginBottom: '8px' }}>
                 Fulfillment Mode
               </label>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
@@ -1484,8 +1484,8 @@ export default function AdminProducts() {
                   style={{
                     padding: '9px',
                     borderRadius: '10px',
-                    border: deliveryType === 'instant' ? '1px solid #9047ff' : '1px solid rgba(144, 71, 255, 0.2)',
-                    background: deliveryType === 'instant' ? 'rgba(144, 71, 255, 0.25)' : 'transparent',
+                    border: deliveryType === 'instant' ? '1px solid #00f0ff' : '1px solid rgba(0, 240, 255, 0.2)',
+                    background: deliveryType === 'instant' ? 'rgba(0, 240, 255, 0.25)' : 'transparent',
                     color: deliveryType === 'instant' ? '#fff' : '#a59ec1',
                     fontWeight: 700,
                     fontSize: '0.82rem',
@@ -1504,7 +1504,7 @@ export default function AdminProducts() {
                   style={{
                     padding: '9px',
                     borderRadius: '10px',
-                    border: deliveryType === 'telegram' ? '1px solid #38bdf8' : '1px solid rgba(144, 71, 255, 0.2)',
+                    border: deliveryType === 'telegram' ? '1px solid #38bdf8' : '1px solid rgba(0, 240, 255, 0.2)',
                     background: deliveryType === 'telegram' ? 'rgba(56, 189, 248, 0.2)' : 'transparent',
                     color: deliveryType === 'telegram' ? '#38bdf8' : '#a59ec1',
                     fontWeight: 700,
@@ -1532,7 +1532,7 @@ export default function AdminProducts() {
                     placeholder="e.g. Sylvieofficeal"
                     style={{
                       width: '100%',
-                      background: '#1c1634',
+                      background: '#0b1624',
                       border: '1px solid rgba(56, 189, 248, 0.3)',
                       borderRadius: '8px',
                       padding: '7px 10px',
@@ -1547,20 +1547,20 @@ export default function AdminProducts() {
 
             {/* Pricing Tiers Builder */}
             <div style={{
-              border: '1px solid rgba(144, 71, 255, 0.2)',
+              border: '1px solid rgba(0, 240, 255, 0.2)',
               borderRadius: '12px',
               padding: '12px',
-              background: '#120d24'
+              background: '#070e17'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#c084fc' }}>Pricing Tiers</span>
+                <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#00f0ff' }}>Pricing Tiers</span>
                 <button
                   type="button"
                   onClick={handleAddPriceOption}
                   style={{
-                    background: '#28204b',
-                    border: '1px solid rgba(144, 71, 255, 0.3)',
-                    color: '#c084fc',
+                    background: '#111f30',
+                    border: '1px solid rgba(0, 240, 255, 0.3)',
+                    color: '#00f0ff',
                     padding: '4px 10px',
                     borderRadius: '8px',
                     fontSize: '0.74rem',
@@ -1584,8 +1584,8 @@ export default function AdminProducts() {
                     style={{
                       padding: '3px 8px',
                       borderRadius: '6px',
-                      background: 'rgba(144, 71, 255, 0.12)',
-                      border: '1px solid rgba(144, 71, 255, 0.25)',
+                      background: 'rgba(0, 240, 255, 0.12)',
+                      border: '1px solid rgba(0, 240, 255, 0.25)',
                       color: '#e2e8f0',
                       fontSize: '0.7rem',
                       fontWeight: 600,
@@ -1606,8 +1606,8 @@ export default function AdminProducts() {
                     onChange={(e) => handlePriceOptionChange(idx, 'duration', e.target.value)}
                     style={{
                       flex: 1,
-                      background: '#1c1634',
-                      border: '1px solid rgba(144, 71, 255, 0.25)',
+                      background: '#0b1624',
+                      border: '1px solid rgba(0, 240, 255, 0.25)',
                       borderRadius: '8px',
                       padding: '7px 10px',
                       color: '#fff',
@@ -1617,7 +1617,7 @@ export default function AdminProducts() {
                     required
                   />
                   <div style={{ width: '110px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ color: '#c084fc', fontSize: '0.85rem' }}>₱</span>
+                    <span style={{ color: '#00f0ff', fontSize: '0.85rem' }}>₱</span>
                     <input
                       type="number"
                       step="0.01"
@@ -1626,8 +1626,8 @@ export default function AdminProducts() {
                       onChange={(e) => handlePriceOptionChange(idx, 'price', e.target.value)}
                       style={{
                         width: '100%',
-                        background: '#1c1634',
-                        border: '1px solid rgba(144, 71, 255, 0.25)',
+                        background: '#0b1624',
+                        border: '1px solid rgba(0, 240, 255, 0.25)',
                         borderRadius: '8px',
                         padding: '7px 10px',
                         color: '#fff',
@@ -1655,7 +1655,7 @@ export default function AdminProducts() {
                 type="checkbox"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                style={{ width: '16px', height: '16px', accentColor: '#9047ff' }}
+                style={{ width: '16px', height: '16px', accentColor: '#00f0ff' }}
               />
               <label htmlFor="prod-active" style={{ fontSize: '0.85rem', color: '#fff', cursor: 'pointer' }}>
                 Active in Storefront
@@ -1667,8 +1667,8 @@ export default function AdminProducts() {
                 type="button"
                 onClick={() => setIsModalOpen(false)}
                 style={{
-                  background: '#28204b',
-                  border: '1px solid rgba(144, 71, 255, 0.25)',
+                  background: '#111f30',
+                  border: '1px solid rgba(0, 240, 255, 0.25)',
                   color: '#fff',
                   padding: '9px 18px',
                   borderRadius: '999px',
@@ -1683,7 +1683,7 @@ export default function AdminProducts() {
                 type="submit"
                 disabled={formSubmitting}
                 style={{
-                  background: 'linear-gradient(135deg, #9047ff 0%, #6e27d8 100%)',
+                  background: 'linear-gradient(135deg, #00f0ff 0%, #0099cc 100%)',
                   border: 'none',
                   color: '#ffffff',
                   padding: '9px 22px',
@@ -1691,7 +1691,7 @@ export default function AdminProducts() {
                   fontWeight: 800,
                   fontSize: '0.88rem',
                   cursor: 'pointer',
-                  boxShadow: '0 6px 20px rgba(144, 71, 255, 0.35)'
+                  boxShadow: '0 6px 20px rgba(0, 240, 255, 0.35)'
                 }}
               >
                 {formSubmitting ? 'Saving...' : modalMode === 'create' ? 'Create Product' : 'Save Changes'}

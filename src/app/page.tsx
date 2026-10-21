@@ -76,7 +76,7 @@ export default function LoginPage() {
       <div className="auth-card card">
         <div className="auth-header">
           <div className="auth-logo" style={{ background: 'transparent', border: 'none' }}>
-            <img src="/images/logo.png?v=2" alt="Reseller Panel Logo" style={{ width: '42px', height: '42px', objectFit: 'contain' }} />
+            <img src="/images/logo.png?v=3" alt="Reseller Panel Logo" style={{ width: '56px', height: '56px', objectFit: 'contain', filter: 'drop-shadow(0 0 12px rgba(0, 240, 255, 0.4))' }} />
           </div>
           <h2>Sign In</h2>
           <p className="subtitle">Access your reseller license panel</p>

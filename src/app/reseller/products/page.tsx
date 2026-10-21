@@ -515,8 +515,8 @@ export default function ResellerProducts() {
 
             {/* Reseller Wallet Box in Sidebar */}
             <div style={{
-              background: '#201a3b',
-              border: '1px solid rgba(144, 71, 255, 0.2)',
+              background: '#0d1724',
+              border: '1px solid rgba(0, 240, 255, 0.2)',
               borderRadius: '14px',
               padding: '14px',
               display: 'flex',
@@ -549,13 +549,13 @@ export default function ResellerProducts() {
                   width: '32px',
                   height: '32px',
                   border: '2px solid rgba(255,255,255,0.1)',
-                  borderTopColor: '#9047ff',
+                  borderTopColor: '#00f0ff',
                   borderRadius: '50%',
                   animation: 'spin 0.8s linear infinite',
                 }} />
               </div>
             ) : filteredProducts.length === 0 ? (
-              <div style={{ gridColumn: '1 / -1', padding: '80px 20px', textAlign: 'center', color: '#938ab8', background: '#201a3b', borderRadius: '18px' }}>
+              <div style={{ gridColumn: '1 / -1', padding: '80px 20px', textAlign: 'center', color: '#938ab8', background: '#0d1724', borderRadius: '18px' }}>
                 <p>No games found matching your filter criteria.</p>
               </div>
             ) : (
@@ -661,7 +661,7 @@ export default function ResellerProducts() {
               <>
                 <div className="modal-header">
                   <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.15rem' }}>
-                    <Send size={18} color="#9047ff" />
+                    <Send size={18} color="#00f0ff" />
                     Order via Telegram
                   </h2>
                   <button onClick={closePurchaseModal} className="modal-close"><X size={18} /></button>
@@ -681,14 +681,14 @@ export default function ResellerProducts() {
                       className={`play-accordion-header ${selectedDuration === p.duration ? 'active' : ''}`}
                       onClick={() => setSelectedDuration(p.duration)}
                       style={{
-                        background: selectedDuration === p.duration ? 'rgba(144, 71, 255, 0.25)' : '#201a3b',
-                        border: selectedDuration === p.duration ? '1px solid #9047ff' : '1px solid rgba(255, 255, 255, 0.08)',
+                        background: selectedDuration === p.duration ? 'rgba(0, 240, 255, 0.25)' : '#0d1724',
+                        border: selectedDuration === p.duration ? '1px solid #00f0ff' : '1px solid rgba(255, 255, 255, 0.08)',
                         borderRadius: '12px',
                         padding: '12px 14px',
                       }}
                     >
                       <span style={{ fontWeight: 700 }}>{p.duration}</span>
-                      <span style={{ fontWeight: 850, color: '#9047ff' }}>₱{p.price.toFixed(2)}</span>
+                      <span style={{ fontWeight: 850, color: '#00f0ff' }}>₱{p.price.toFixed(2)}</span>
                     </div>
                   ))}
                 </div>
@@ -711,7 +711,7 @@ export default function ResellerProducts() {
               <>
                 <div className="modal-header">
                   <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.15rem' }}>
-                    <Zap size={18} color="#9047ff" />
+                    <Zap size={18} color="#00f0ff" />
                     Purchase License Key
                   </h2>
                   <button onClick={closePurchaseModal} className="modal-close"><X size={18} /></button>
@@ -740,7 +740,7 @@ export default function ResellerProducts() {
                   display: 'flex',
                   alignItems: 'center',
                   gap: '12px',
-                  background: '#201a3b',
+                  background: '#0d1724',
                   border: '1px solid rgba(255,255,255,0.06)',
                   borderRadius: '14px',
                   padding: '10px 14px',
@@ -775,9 +775,9 @@ export default function ResellerProducts() {
                             justifyContent: 'space-between',
                             padding: '12px 14px',
                             borderRadius: '12px',
-                            background: isSelected ? 'rgba(144, 71, 255, 0.25)' : '#201a3b',
-                            border: isSelected ? '1px solid #9047ff' : '1px solid rgba(255, 255, 255, 0.08)',
-                            boxShadow: isSelected ? '0 0 14px rgba(144, 71, 255, 0.25)' : 'none',
+                            background: isSelected ? 'rgba(0, 240, 255, 0.25)' : '#0d1724',
+                            border: isSelected ? '1px solid #00f0ff' : '1px solid rgba(255, 255, 255, 0.08)',
+                            boxShadow: isSelected ? '0 0 14px rgba(0, 240, 255, 0.25)' : 'none',
                             cursor: isOut ? 'not-allowed' : 'pointer',
                             opacity: isOut ? 0.45 : 1,
                             transition: 'all 0.15s ease',
@@ -800,7 +800,7 @@ export default function ResellerProducts() {
 
                 {/* Balance Summary */}
                 <div style={{
-                  background: '#201a3b',
+                  background: '#0d1724',
                   borderRadius: '12px',
                   padding: '10px 14px',
                   display: 'flex',
@@ -839,9 +839,9 @@ export default function ResellerProducts() {
                   width: '52px',
                   height: '52px',
                   borderRadius: '50%',
-                  background: 'rgba(144, 71, 255, 0.2)',
-                  color: '#9047ff',
-                  boxShadow: '0 0 20px rgba(144, 71, 255, 0.3)',
+                  background: 'rgba(0, 240, 255, 0.2)',
+                  color: '#00f0ff',
+                  boxShadow: '0 0 20px rgba(0, 240, 255, 0.3)',
                   margin: '0 auto',
                 }}>
                   <CheckCircle size={32} />
@@ -857,10 +857,10 @@ export default function ResellerProducts() {
                 {/* Glowing Monospace Key Display */}
                 <div style={{
                   background: '#110d22',
-                  border: '1px solid rgba(144, 71, 255, 0.4)',
+                  border: '1px solid rgba(0, 240, 255, 0.4)',
                   borderRadius: '14px',
                   padding: '16px',
-                  boxShadow: '0 0 20px rgba(144, 71, 255, 0.2)',
+                  boxShadow: '0 0 20px rgba(0, 240, 255, 0.2)',
                 }}>
                   <span style={{ fontSize: '0.68rem', color: '#9d94c2', textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', marginBottom: '6px' }}>
                     Your License Key
@@ -885,7 +885,7 @@ export default function ResellerProducts() {
                   style={{
                     padding: '13px',
                     fontSize: '0.95rem',
-                    background: copiedKey ? '#059669' : '#9047ff',
+                    background: copiedKey ? '#059669' : '#00f0ff',
                   }}
                 >
                   {copiedKey ? <Check size={18} /> : <Copy size={18} />}
@@ -920,7 +920,7 @@ export default function ResellerProducts() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div className="modal-header">
             <h2 style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <Wallet size={20} color="#9047ff" />
+              <Wallet size={20} color="#00f0ff" />
               Add Reseller Balance
             </h2>
             <button onClick={() => setBalanceModalOpen(false)} className="modal-close">
@@ -942,8 +942,8 @@ export default function ResellerProducts() {
           </div>
 
           <div style={{
-            background: 'rgba(144, 71, 255, 0.08)',
-            border: '1px solid rgba(144, 71, 255, 0.25)',
+            background: 'rgba(0, 240, 255, 0.08)',
+            border: '1px solid rgba(0, 240, 255, 0.25)',
             borderRadius: 'var(--radius-md)',
             padding: '14px',
             fontSize: '0.85rem',

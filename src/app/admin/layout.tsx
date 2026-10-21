@@ -69,25 +69,25 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className={`sidebar-overlay ${sidebarOpen ? 'visible' : ''}`} onClick={() => setSidebarOpen(false)} />
 
       <aside className={`sidebar ${sidebarOpen ? 'open' : ''}`}>
-        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '1px solid rgba(144, 71, 255, 0.15)' }}>
+        <div className="sidebar-header" style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '22px 20px', borderBottom: '1px solid rgba(0, 240, 255, 0.14)' }}>
           <div style={{
-            width: '36px',
-            height: '36px',
+            width: '38px',
+            height: '38px',
             borderRadius: '10px',
-            background: 'linear-gradient(135deg, rgba(144, 71, 255, 0.25) 0%, rgba(110, 39, 216, 0.15) 100%)',
-            border: '1px solid rgba(144, 71, 255, 0.35)',
+            background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.22) 0%, rgba(0, 153, 204, 0.12) 100%)',
+            border: '1px solid rgba(0, 240, 255, 0.4)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: '0 4px 14px rgba(144, 71, 255, 0.3)',
+            boxShadow: '0 0 18px rgba(0, 240, 255, 0.3)',
             overflow: 'hidden',
             flexShrink: 0
           }}>
-            <img src="/images/logo.png?v=2" alt="Logo" style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+            <img src="/images/logo.png?v=3" alt="Logo" style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
           </div>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
             <span style={{ fontWeight: 850, fontSize: '1rem', letterSpacing: '-0.01em', color: '#ffffff' }}>Admin Portal</span>
-            <span style={{ fontSize: '0.68rem', color: '#a855f7', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Management</span>
+            <span style={{ fontSize: '0.68rem', color: '#00f0ff', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Ghosst Management</span>
           </div>
         </div>
         <nav className="sidebar-nav">
