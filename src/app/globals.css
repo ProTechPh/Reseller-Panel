@@ -1261,10 +1261,10 @@ select.form-input option {
 }
 
 .btn-page:hover:not(:disabled) {
-  background: #e50914;
-  border-color: #e50914;
+  background: #9047ff;
+  border-color: #9047ff;
   color: #fff;
-  box-shadow: 0 2px 8px rgba(229, 9, 20, 0.4);
+  box-shadow: 0 4px 12px rgba(144, 71, 255, 0.4);
 }
 
 .btn-page:disabled {
@@ -1289,8 +1289,8 @@ select.form-input option {
 }
 
 .admin-prod-card {
-  background: var(--bg-card);
-  border: 1px solid var(--border-color);
+  background: #201a3b;
+  border: 1px solid rgba(144, 71, 255, 0.18);
   border-radius: var(--radius-lg);
   padding: 18px;
   display: flex;
@@ -1303,9 +1303,9 @@ select.form-input option {
 }
 
 .admin-prod-card:hover {
-  border-color: rgba(229, 9, 20, 0.4);
+  border-color: rgba(144, 71, 255, 0.5);
   transform: translateY(-2px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 12px 30px rgba(144, 71, 255, 0.2);
 }
 
 .admin-prod-top {
